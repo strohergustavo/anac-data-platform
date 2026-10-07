@@ -1,8 +1,8 @@
 <img src="assets/header.svg" width="100%" alt="ANAC Flight Analytics Platform. A medallion Lakehouse on Databricks for Brazil's civil aviation data." />
 
-Analyzes **punctuality, cancellations and delay recovery** across 1M+ Brazilian flights using ANAC open data. A batch **Lakehouse on Databricks** ingests the raw files, enforces a **9 rule data contract without dropping a single record**, and serves a gold layer modeled for both **BI dashboards** and an **AI agent (Databricks Genie)**.
+An end to end aviation **data Lakehouse on Databricks** that turns ANAC's public flight records into decision ready analytics. Over **1 million flights** move through an idempotent **medallion architecture** (bronze → silver → gold), where a declarative data quality framework of **9 expectations** isolates **21% of anomalous records** into a diagnostic quarantine without losing a single row.
 
-**1M+** flights analyzed · **12** months of data · **9** data quality rules · **0** rows dropped · **< 2 min** full refresh
+The gold layer follows a **dual model design**: a Kimball dimensional model for BI workloads and a **39 column One Big Table** engineered for natural language to SQL agents (Databricks Genie). Everything is governed by **Unity Catalog**, with end to end lineage, tags and complete column documentation that grounds the AI semantically, and the full pipeline refreshes in **under two minutes** on serverless compute.
 
 **Contents:** [Architecture](#architecture-overview) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality--validation-strategy) · [Deep Dives](#deep-dives) · [Lessons Learned](#lessons-learned) · [Limitations](#known-limitations) · [Roadmap](#roadmap) · [Data Sources](#data-sources)
 
