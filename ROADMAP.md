@@ -24,6 +24,9 @@ Build a notebook that runs a curated set of natural-language questions against G
 - Filter condition accuracy
 - Join avoidance (should be 100% for OBT)
 
+### Complete the Star Schema
+Split the attributes still carried inside `fact_flights` into conformed dimensions: `dim_airline` (national and foreign carriers) and `dim_date` (calendar, weekday, holiday and season flags). This turns the current fact + airport dimension model into a full star schema for BI tools.
+
 ## Medium Term (6–12 Months)
 
 ### Partitioning / Liquid Clustering

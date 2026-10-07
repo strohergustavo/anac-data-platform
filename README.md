@@ -1,8 +1,8 @@
 <img src="assets/header.svg" width="100%" alt="ANAC Flight Analytics Platform. A medallion Lakehouse on Databricks for Brazil's civil aviation data." />
 
-An end to end data platform that turns **Brazil's public civil aviation records** into analytics ready tables. Raw ANAC files land in a **bronze** layer, are typed and checked against a data contract in **silver**, and become a **gold** layer modeled twice: a star schema for BI dashboards and a single wide table designed for **AI agents (Databricks Genie)**.
+Analyzes **punctuality, cancellations and delay recovery** across 1M+ Brazilian flights using ANAC open data. A batch **Lakehouse on Databricks** ingests the raw files, enforces a **9 rule data contract without dropping a single record**, and serves a gold layer modeled for both **BI dashboards** and an **AI agent (Databricks Genie)**.
 
-<img src="assets/metrics.svg" width="100%" alt="1M+ flight records, 12 months of data, 9 data quality rules, 21% rows quarantined, under 2 minutes end to end refresh" />
+<img src="assets/metrics.svg" width="100%" alt="1M+ flights analyzed, 12 months of data, 9 data quality rules, 0 rows dropped, under 2 minutes full refresh" />
 
 **Contents:** [Architecture](#architecture-overview) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality--validation-strategy) · [Deep Dives](#deep-dives) · [Lessons Learned](#lessons-learned) · [Limitations](#known-limitations) · [Data Sources](#data-sources)
 
@@ -12,22 +12,22 @@ An end to end data platform that turns **Brazil's public civil aviation records*
 
 The platform follows the **medallion architecture** (bronze → silver → gold), a pattern popularized by Databricks that applies progressive data refinement. Each layer has a single, non-overlapping responsibility.
 
-<img src="assets/architecture.svg" width="100%" alt="Architecture: ANAC open data flows into bronze, silver and gold layers on Databricks, consumed by BI dashboards and the Genie AI agent." />
+<img src="assets/architecture.svg" width="100%" alt="Architecture: ANAC CSVs land in a Unity Catalog Volume, are ingested with PySpark into bronze, typed and checked by Spark Declarative Pipelines in silver with a diagnostic quarantine view, and modeled in gold as a fact table, an airport dimension and a one big table for BI dashboards and the Genie AI agent." />
 
 | Layer | Responsibility | Format | Pattern | Row Count |
 |-------|---------------|--------|---------|-----------|
 | **Bronze** | Raw ingestion, zero transformation, all-string schema | Delta (full refresh) | Append-only landing | 1,014,705 (VRA) |
 | **Silver** | Type casting, column renaming, enrichment flags, quarantine | Delta (CREATE OR REPLACE) | Lossless mirror + DQ | 1,014,705 (VRA) |
-| **Gold** | Star schema + denormalized OBT for AI consumption | Delta (CREATE OR REPLACE) | Kimball fact/dim + OBT | 1,014,664 (OBT) |
+| **Gold** | Fact table + airport dimension, plus a denormalized OBT for AI consumption | Delta (CREATE OR REPLACE) | Kimball fact/dim + OBT | 1,014,664 (OBT) |
 
 ### Design Philosophy
 
 The architecture draws on two complementary traditions:
 
 - **Medallion (Databricks):** Progressive refinement through bronze → silver → gold, with each layer serving a distinct consumer. Bronze is for engineers debugging ingestion; silver is for analysts exploring cleaned data; gold is for business consumption.
-- **Kimball dimensional modeling:** The gold layer maintains a star schema (`fact_flights` + `dim_airport`) for traditional BI consumption, following Ralph Kimball's principle that dimensions should be conformed and re-usable.
+- **Kimball dimensional modeling:** The gold layer maintains a dimensional model (`fact_flights` + `dim_airport`) for traditional BI consumption, following Ralph Kimball's principle that dimensions should be conformed and re-usable.
 
-The OBT (`obt_flights`) is a deliberate departure from pure Kimball — it denormalizes the star schema into a single wide table to eliminate join reasoning for LLM-based consumers. This dual-model approach (star schema + OBT) lets us serve both human analysts and AI agents from the same gold layer.
+The OBT (`obt_flights`) is a deliberate departure from pure Kimball — it denormalizes the dimensional model into a single wide table to eliminate join reasoning for LLM-based consumers. This dual-model approach (dimensional model + OBT) lets us serve both human analysts and AI agents from the same gold layer.
 
 ---
 
@@ -120,9 +120,11 @@ The quarantine view (`03_vra_quarantine.sql`) captures which rows violated which
 
 ### 2. OBT (One Big Table) alongside Star Schema
 
-**Decision:** Maintain both a normalized star schema (`fact_flights` + `dim_airport`) and a denormalized OBT (`obt_flights`).
+**Decision:** Maintain both a dimensional model (`fact_flights` + `dim_airport`) and a denormalized OBT (`obt_flights`).
 
-**Rationale:** The star schema serves traditional BI consumption (Tableau, Power BI) where modelers expect separable dimensions, following Kimball's dimensional modeling principles. The OBT serves AI consumption via Genie Agent, where join-free access eliminates the need for an LLM to understand table relationships — every column the agent might need is in a single flat table.
+**Current scope:** `dim_airport` is the only conformed dimension today. Airline, flight type and date attributes are still carried inside `fact_flights`; splitting them into `dim_airline` and `dim_date` is on the [roadmap](ROADMAP.md).
+
+**Rationale:** The dimensional model serves traditional BI consumption (Tableau, Power BI) where modelers expect separable dimensions, following Kimball's dimensional modeling principles. The OBT serves AI consumption via Genie Agent, where join-free access eliminates the need for an LLM to understand table relationships — every column the agent might need is in a single flat table.
 
 This dual-model approach costs ~15 MB of additional storage (the OBT duplicates the fact table's data with resolved dimension attributes). At 1M rows, this is negligible; the OBT rebuild takes seconds.
 
@@ -496,7 +498,7 @@ The OBT (`gold.obt_flights`) is the primary table for Genie Agent. It is tagged 
 
 ### BI Consumption
 
-The star schema (`fact_flights` + `dim_airport`) supports traditional BI tools. `fact_flights` is tagged `consumption = 'bi'` and maintains normalized foreign keys for modelers who prefer star-join patterns.
+The dimensional model (`fact_flights` + `dim_airport`) supports traditional BI tools. `fact_flights` is tagged `consumption = 'bi'` and maintains normalized foreign keys for modelers who prefer star-join patterns.
 
 </details>
 
