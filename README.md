@@ -2,9 +2,9 @@
 
 Analyzes **punctuality, cancellations and delay recovery** across 1M+ Brazilian flights using ANAC open data. A batch **Lakehouse on Databricks** ingests the raw files, enforces a **9 rule data contract without dropping a single record**, and serves a gold layer modeled for both **BI dashboards** and an **AI agent (Databricks Genie)**.
 
-<img src="assets/metrics.svg" width="100%" alt="1M+ flights analyzed, 12 months of data, 9 data quality rules, 0 rows dropped, under 2 minutes full refresh" />
+**1M+** flights analyzed · **12** months of data · **9** data quality rules · **0** rows dropped · **< 2 min** full refresh
 
-**Contents:** [Architecture](#architecture-overview) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality--validation-strategy) · [Deep Dives](#deep-dives) · [Lessons Learned](#lessons-learned) · [Limitations](#known-limitations) · [Data Sources](#data-sources)
+**Contents:** [Architecture](#architecture-overview) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality--validation-strategy) · [Deep Dives](#deep-dives) · [Lessons Learned](#lessons-learned) · [Limitations](#known-limitations) · [Roadmap](#roadmap) · [Data Sources](#data-sources)
 
 ---
 
@@ -12,7 +12,59 @@ Analyzes **punctuality, cancellations and delay recovery** across 1M+ Brazilian 
 
 The platform follows the **medallion architecture** (bronze → silver → gold), a pattern popularized by Databricks that applies progressive data refinement. Each layer has a single, non-overlapping responsibility.
 
-<img src="assets/architecture.svg" width="100%" alt="Architecture: ANAC CSVs land in a Unity Catalog Volume, are ingested with PySpark into bronze, typed and checked by Spark Declarative Pipelines in silver with a diagnostic quarantine view, and modeled in gold as a fact table, an airport dimension and a one big table for BI dashboards and the Genie AI agent." />
+```mermaid
+graph TD
+    subgraph Sources["ANAC Public Data (dados.gov.br)"]
+        VRA["VRA Monthly CSVs"]
+        AER["Aerodromes CSV"]
+        NAT["National Airlines CSV"]
+        FOR["Foreign Airlines CSV"]
+        OPC["Operation Codes (seed)"]
+    end
+
+    subgraph Bronze["Bronze Layer — Raw"]
+        BV["bronze.vra<br/>1,014,705 rows"]
+        BA["bronze.aerodromos"]
+        BN["bronze.national_airlines"]
+        BF["bronze.foreign_airlines"]
+        BO["bronze.operation_codes"]
+    end
+
+    subgraph Silver["Silver Layer — Typed & Enriched"]
+        SV["silver.vra<br/>1,014,705 rows"]
+        SA["silver.aerodromes"]
+        SL["silver.airlines"]
+        SO["silver.operation_codes"]
+        SQ["silver.vra_quarentena<br/>213,545 rows (21%)"]
+    end
+
+    subgraph Gold["Gold Layer — Consumption"]
+        GF["gold.fact_flights<br/>1,014,664 rows"]
+        GD["gold.dim_airport<br/>396 rows"]
+        GO["gold.obt_flights<br/>1,014,664 rows, 39 cols"]
+    end
+
+    VRA --> BV
+    AER --> BA
+    NAT --> BN
+    FOR --> BF
+    OPC --> BO
+
+    BV --> SV
+    BA --> SA
+    BN --> SL
+    BF --> SL
+    BO --> SO
+    SV --> SQ
+
+    SV --> GF
+    SL --> GF
+    SO --> GF
+    SV --> GD
+    SA --> GD
+    GF --> GO
+    GD --> GO
+```
 
 | Layer | Responsibility | Format | Pattern | Row Count |
 |-------|---------------|--------|---------|-----------|
@@ -91,13 +143,12 @@ anac-data-platform/
 │       ├── 02_gold_dim_airport.py         # Dimension: airports (unified origin/dest)
 │       ├── 03_gold_fact_flights.py        # Fact: flight steps with resolved FKs
 │       └── 04_gold_governance.py          # Column comments, UC tags, validation
-├── assets/                              # README images
+├── assets/                              # README header
 ├── docs/
 │   ├── data_catalog.py                    # Notebook-format data dictionary
 │   ├── RUNBOOK.md                         # Troubleshooting guide
 │   └── GOVERNANCE.md                      # Retention, SLA, audit policy
 ├── .gitignore
-├── ROADMAP.md
 └── README.md
 ```
 
@@ -122,7 +173,7 @@ The quarantine view (`03_vra_quarantine.sql`) captures which rows violated which
 
 **Decision:** Maintain both a dimensional model (`fact_flights` + `dim_airport`) and a denormalized OBT (`obt_flights`).
 
-**Current scope:** `dim_airport` is the only conformed dimension today. Airline, flight type and date attributes are still carried inside `fact_flights`; splitting them into `dim_airline` and `dim_date` is on the [roadmap](ROADMAP.md).
+**Current scope:** `dim_airport` is the only conformed dimension today. Airline, flight type and date attributes are still carried inside `fact_flights`; splitting them into `dim_airline` and `dim_date` is on the [roadmap](#roadmap).
 
 **Rationale:** The dimensional model serves traditional BI consumption (Tableau, Power BI) where modelers expect separable dimensions, following Kimball's dimensional modeling principles. The OBT serves AI consumption via Genie Agent, where join-free access eliminates the need for an LLM to understand table relationships — every column the agent might need is in a single flat table.
 
@@ -147,7 +198,7 @@ This dual-model approach costs ~15 MB of additional storage (the OBT duplicates 
 
 **Rationale:** The dataset is ~1M rows and ~11–20 MB per layer. At this scale, full refresh completes in under 2 minutes and eliminates the complexity of change detection, deduplication, and merge conflicts.
 
-**Impact:** Idempotent and simple — no merge-conflict risk. When the dataset grows beyond ~10M rows, the bronze layer can adopt Auto Loader with incremental merge; silver and gold can switch to `MERGE INTO` with minimal code changes. See [ROADMAP.md](ROADMAP.md) for the planned evolution.
+**Impact:** Idempotent and simple — no merge-conflict risk. When the dataset grows beyond ~10M rows, the bronze layer can adopt Auto Loader with incremental merge; silver and gold can switch to `MERGE INTO` with minimal code changes. See the [Roadmap](#roadmap) for the planned evolution.
 
 **Trade-off:** O(n) scan on every refresh, not suitable beyond ~10M rows without moving to incremental loads.
 
@@ -284,7 +335,7 @@ The top 3 airlines account for 83.3% of all flight records:
 | GLO | 259,304 | 25.5% | |
 | Others (44 carriers) | 169,178 | 16.7% | Long tail of foreign airlines |
 
-**Implication:** At the current scale, skew is irrelevant — single-file scans complete in <1s. At >10M rows, partitioning by `icao_airline` would create hot partitions for TAM/AZU/GLO. Liquid clustering on `icao_airline` + `scheduled_departure_date` is the planned mitigation (see [ROADMAP.md](ROADMAP.md)).
+**Implication:** At the current scale, skew is irrelevant — single-file scans complete in <1s. At >10M rows, partitioning by `icao_airline` would create hot partitions for TAM/AZU/GLO. Liquid clustering on `icao_airline` + `scheduled_departure_date` is the planned mitigation (see the [Roadmap](#roadmap)).
 
 ### Monthly Distribution
 
@@ -384,7 +435,7 @@ See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) for the full governance policy.
 | Tag coverage | 100% | Governance notebook validation query |
 | Genie query latency P50 | < 2 s | Serverless compute metrics |
 
-*Note: Automated alerts are a planned enhancement — see [ROADMAP.md](ROADMAP.md). Currently, the governance notebook provides manual validation.*
+*Note: Automated alerts are a planned enhancement — see the [Roadmap](#roadmap). Currently, the governance notebook provides manual validation.*
 
 </details>
 
@@ -538,7 +589,25 @@ The dimensional model (`fact_flights` + `dim_airport`) supports traditional BI t
 
 7. **No data freshness SLA:** The pipeline depends on ANAC publishing monthly CSVs. There is no automated check for when new data arrives.
 
-See [ROADMAP.md](ROADMAP.md) for the planned evolution.
+
+---
+
+## Roadmap
+
+**Next**
+- **Complete the star schema:** split airline and date attributes out of `fact_flights` into `dim_airline` and `dim_date`.
+- **Automated alerting:** Databricks SQL alerts on the governance checks (row counts, comment and tag coverage) and on pipeline failures.
+- **CI/CD:** deploy with Databricks Asset Bundles across separate `dev`, `staging` and `prod` catalogs.
+- **Genie evaluation:** run a curated set of questions and measure table, column and filter accuracy.
+- **Data freshness:** detect new monthly VRA files on dados.gov.br and trigger ingestion automatically.
+
+**When volume grows past ~5M rows**
+- **Incremental loads:** Auto Loader in bronze and `MERGE INTO` in silver and gold.
+- **Liquid clustering** on `icao_airline` + `scheduled_departure_date`.
+
+**Later**
+- **Historical backfill** beyond the current 12 month window.
+- **More ANAC datasets:** airport infrastructure and passenger volumes.
 
 ---
 
