@@ -1,59 +1,10 @@
-# ANAC Flight Analytics Platform
+<img src="assets/header.svg" width="100%" alt="ANAC Flight Analytics Platform. A medallion Lakehouse on Databricks for Brazil's civil aviation data." />
 
-![Databricks](https://img.shields.io/badge/Databricks-Lakehouse-0078D4?style=for-the-badge&logo=databricks)
-![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python)
-![Spark SQL](https://img.shields.io/badge/Spark%20SQL-CC2927?style=for-the-badge&logo=apache-spark)
-![Delta Lake](https://img.shields.io/badge/Delta%20Lake-00A3E0?style=for-the-badge)
-![PySpark](https://img.shields.io/badge/PySpark-3.5+-FF6B35?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-![Production](https://img.shields.io/badge/Production%20Ready-brightgreen?style=for-the-badge)
+An end to end data platform that turns **Brazil's public civil aviation records** into analytics ready tables. Raw ANAC files land in a **bronze** layer, are typed and checked against a data contract in **silver**, and become a **gold** layer modeled twice: a star schema for BI dashboards and a single wide table designed for **AI agents (Databricks Genie)** to answer questions in plain Portuguese.
 
----
+<img src="assets/metrics.svg" width="100%" alt="1M+ flight records, 12 months of data, 9 data quality rules, 21% rows quarantined, under 2 minutes end to end refresh" />
 
-## Table of Contents
-
-- [Quick Start](#quick-start)
-- [Architecture Overview](#architecture-overview)
-- [Repository Structure](#repository-structure)
-- [Architectural Decisions](#architectural-decisions)
-- [Data Quality & Validation Strategy](#data-quality--validation-strategy)
-- [Performance & Scalability](#performance--scalability)
-- [Lineage & Governance](#lineage--governance)
-- [Use Cases & Query Patterns](#use-cases--query-patterns)
-- [Consumption Patterns](#consumption-patterns)
-- [Trade-offs](#trade-offs)
-- [Lessons Learned](#lessons-learned)
-- [Known Limitations](#known-limitations)
-- [Data Sources](#data-sources)
-- [References](#references)
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- Databricks workspace with Serverless compute enabled
-- Unity Catalog: `airline_operations` catalog with `bronze`, `silver`, `gold` schemas
-- UC Volume: `airline_operations.bronze.data` containing ANAC CSV files
-- Git credential linked to this repository
-
-### Run the Pipeline
-
-Execute the notebooks in order:
-
-| Step | Notebook | Action |
-|------|----------|--------|
-| 1 | `src/bronze/01_ingest_vra.py` | Ingest VRA CSVs → `bronze.vra` |
-| 2 | `src/bronze/02_ingest_reference_data.py` | Ingest aerodromes, airlines, op codes → `bronze.*` |
-| 3 | `src/silver/01_silver_mirror.py` | Type-cast, enrich, rename → `silver.*` |
-| 4 | `src/silver/transformations/01-03_*.sql` | SDP pipeline: mark → audit → quarantine |
-| 5 | `src/gold/02_gold_dim_airport.py` | Build airport dimension |
-| 6 | `src/gold/03_gold_fact_flights.py` | Build fact table with business rules |
-| 7 | `src/gold/01_gold_obt_flights.py` | Build denormalized OBT |
-| 8 | `src/gold/04_gold_governance.py` | Apply comments, tags, run validation |
-
-Each notebook is idempotent (`CREATE OR REPLACE` / `mode("overwrite")`) and can be re-run safely.
+**Contents:** [Architecture](#architecture-overview) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality--validation-strategy) · [Deep Dives](#deep-dives) · [Lessons Learned](#lessons-learned) · [Limitations](#known-limitations) · [Data Sources](#data-sources)
 
 ---
 
@@ -62,6 +13,7 @@ Each notebook is idempotent (`CREATE OR REPLACE` / `mode("overwrite")`) and can 
 The platform follows the **medallion architecture** (bronze → silver → gold), a pattern popularized by Databricks that applies progressive data refinement. Each layer has a single, non-overlapping responsibility.
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0D1117','primaryTextColor':'#E6EDF3','primaryBorderColor':'#D9663E','lineColor':'#D9663E','secondaryColor':'#0D1117','tertiaryColor':'#010409','clusterBkg':'#0D1117','clusterBorder':'#30363D','titleColor':'#E6EDF3','fontFamily':'-apple-system, Segoe UI, Helvetica, Arial, sans-serif'}}}%%
 graph TD
     subgraph Sources["ANAC Public Data (dados.gov.br)"]
         VRA["VRA Monthly CSVs"]
@@ -132,10 +84,48 @@ The OBT (`obt_flights`) is a deliberate departure from pure Kimball — it denor
 
 ---
 
+## Key Findings
+
+- **Three airlines carry the market:** TAM, AZU and GLO account for **83.3%** of all flight records.
+- **Delays are often recovered in the air:** **645,914** flight steps arrived less delayed than they departed.
+- **One in five records needs care:** **21.05%** of rows fail at least one data quality rule, mostly missing scheduled times and foreign carriers outside the ANAC registry.
+- **International routes are real, not errors:** **22%** of destination codes are foreign airports, handled with a fallback name in `dim_airport`.
+- **Summer peaks:** December and January are the busiest months (85,452 and 88,965 flights), February the quietest (77,136).
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Databricks workspace with Serverless compute enabled
+- Unity Catalog: `airline_operations` catalog with `bronze`, `silver`, `gold` schemas
+- UC Volume: `airline_operations.bronze.data` containing ANAC CSV files
+- Git credential linked to this repository
+
+### Run the Pipeline
+
+Execute the notebooks in order:
+
+| Step | Notebook | Action |
+|------|----------|--------|
+| 1 | `src/bronze/01_ingest_vra.py` | Ingest VRA CSVs → `bronze.vra` |
+| 2 | `src/bronze/02_ingest_reference_data.py` | Ingest aerodromes, airlines, op codes → `bronze.*` |
+| 3 | `src/silver/01_silver_mirror.py` | Type-cast, enrich, rename → `silver.*` |
+| 4 | `src/silver/transformations/01-03_*.sql` | SDP pipeline: mark → audit → quarantine |
+| 5 | `src/gold/02_gold_dim_airport.py` | Build airport dimension |
+| 6 | `src/gold/03_gold_fact_flights.py` | Build fact table with business rules |
+| 7 | `src/gold/01_gold_obt_flights.py` | Build denormalized OBT |
+| 8 | `src/gold/04_gold_governance.py` | Apply comments, tags, run validation |
+
+Each notebook is idempotent (`CREATE OR REPLACE` / `mode("overwrite")`) and can be re-run safely.
+
+---
+
 ## Repository Structure
 
 ```
-analytics-lakehouse/
+anac-data-platform/
 ├── src/
 │   ├── bronze/
 │   │   ├── README.md
@@ -154,12 +144,12 @@ analytics-lakehouse/
 │       ├── 02_gold_dim_airport.py         # Dimension: airports (unified origin/dest)
 │       ├── 03_gold_fact_flights.py        # Fact: flight steps with resolved FKs
 │       └── 04_gold_governance.py          # Column comments, UC tags, validation
+├── assets/                              # README images
 ├── docs/
 │   ├── data_catalog.py                    # Notebook-format data dictionary
 │   ├── RUNBOOK.md                         # Troubleshooting guide
 │   └── GOVERNANCE.md                      # Retention, SLA, audit policy
 ├── .gitignore
-├── CONTRIBUTING.md
 ├── ROADMAP.md
 └── README.md
 ```
@@ -178,7 +168,8 @@ The quarantine view (`03_vra_quarantine.sql`) captures which rows violated which
 
 **Impact:** `silver.vra` row count == `bronze.vra` row count, always. Quality issues are diagnosed, not hidden. Business rules about exclusion are applied at gold, not silver.
 
-**Reference:** This pattern aligns with the "quarantine table" approach described in *The Data Engineering Cookbook* (Lorenz, 2020) — separate the detection of bad data from the decision about what to do with it.
+
+**Trade-off:** Quarantined rows (21%) remain in `silver.vra`, so consumers must know that not every row passes every check.
 
 ### 2. OBT (One Big Table) alongside Star Schema
 
@@ -190,7 +181,8 @@ This dual-model approach costs ~15 MB of additional storage (the OBT duplicates 
 
 **Impact:** Genie Agent can answer any business question with a single-table `SELECT` — no `JOIN` clauses, no foreign-key reasoning, no schema discovery overhead.
 
-**Reference:** The OBT pattern is discussed in *The Data Warehouse Toolkit* (Kimball & Ross, 3rd ed., ch. 16) as a denormalized alternative for simplified consumption, and is increasingly relevant for LLM-based query generation where join complexity is a failure mode.
+
+**Trade-off:** ~15 MB of duplicated storage, and a dimension change requires rebuilding the OBT, not just the dimension.
 
 ### 3. Python for Ingestion, SQL for Transformation
 
@@ -207,6 +199,8 @@ This dual-model approach costs ~15 MB of additional storage (the OBT duplicates 
 **Rationale:** The dataset is ~1M rows and ~11–20 MB per layer. At this scale, full refresh completes in under 2 minutes and eliminates the complexity of change detection, deduplication, and merge conflicts.
 
 **Impact:** Idempotent and simple — no merge-conflict risk. When the dataset grows beyond ~10M rows, the bronze layer can adopt Auto Loader with incremental merge; silver and gold can switch to `MERGE INTO` with minimal code changes. See [ROADMAP.md](ROADMAP.md) for the planned evolution.
+
+**Trade-off:** O(n) scan on every refresh, not suitable beyond ~10M rows without moving to incremental loads.
 
 ### 5. Databricks over Snowflake / BigQuery
 
@@ -282,7 +276,10 @@ Every notebook is idempotent:
 
 ---
 
-## Performance & Scalability
+## Deep Dives
+
+<details>
+<summary><b>Performance & Scalability</b></summary>
 
 ### Current Data Volume
 
@@ -362,9 +359,10 @@ No partitioning or liquid clustering is currently applied. At <1M rows and <16 M
 
 Full bronze -> silver -> gold refresh completes in **under 2 minutes** on serverless compute, including governance and validation.
 
----
+</details>
 
-## Lineage & Governance
+<details>
+<summary><b>Lineage & Governance</b></summary>
 
 ### Unity Catalog Tags
 
@@ -439,9 +437,10 @@ See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) for the full governance policy.
 
 *Note: Automated alerts are a planned enhancement — see [ROADMAP.md](ROADMAP.md). Currently, the governance notebook provides manual validation.*
 
----
+</details>
 
-## Use Cases & Query Patterns
+<details>
+<summary><b>Use Cases & Query Patterns</b></summary>
 
 ### Punctuality Analysis
 
@@ -514,9 +513,10 @@ GROUP BY scheduled_departure_hour
 ORDER BY scheduled_departure_hour;
 ```
 
----
+</details>
 
-## Consumption Patterns
+<details>
+<summary><b>Consumption Patterns (Genie Agent & BI)</b></summary>
 
 ### Genie Agent (NL2SQL)
 
@@ -551,29 +551,7 @@ The OBT (`gold.obt_flights`) is the primary table for Genie Agent. It is tagged 
 
 The star schema (`fact_flights` + `dim_airport`) supports traditional BI tools. `fact_flights` is tagged `consumption = 'bi'` and maintains normalized foreign keys for modelers who prefer star-join patterns.
 
----
-
-## Trade-offs
-
-### Python + SQL (not pure Python or pure SQL)
-
-**Cost:** Two skill sets required to maintain the pipeline.
-**Benefit:** Each layer uses the most expressive tool. Python handles file I/O, metadata extraction, and conditional logic. SQL handles set-based transformations, window functions, and SDP expectations more readably. A pure-SQL approach would require complex CSV parsing workarounds; a pure-Python approach would bury transformation logic inside DataFrame API calls that are harder to audit.
-
-### SDP Warn Mode Preserves the Silver Mirror
-
-**Cost:** Quarantined rows (21%) remain in `silver.vra` — consumers must be aware that not all rows pass all quality checks.
-**Benefit:** Silver is a true, lossless mirror of bronze. Row counts match exactly. The quarantine view provides full diagnostic visibility. Business rules about which categories to exclude are applied at gold, not silver.
-
-### Denormalization Cost vs Query Simplicity
-
-**Cost:** ~15 MB of duplicate storage. Denormalized tables are harder to update when dimension attributes change (must rebuild OBT, not just dimension).
-**Benefit:** Genie Agent and ad-hoc analysts query a single table — no joins, no schema discovery, no foreign-key reasoning. At 1M rows, the OBT rebuild takes seconds; the storage cost is negligible.
-
-### Full Refresh vs Incremental
-
-**Cost:** O(n) scan on every refresh. Not suitable for datasets >10M rows without modification.
-**Benefit:** Idempotent, simple, no merge-conflict risk. At 1M rows, full refresh completes in under 2 minutes. The transition to incremental is a planned, well-understood evolution — not an architectural rewrite.
+</details>
 
 ---
 
@@ -611,3 +589,17 @@ The star schema (`fact_flights` + `dim_airport`) supports traditional BI tools. 
 
 7. **No data freshness SLA:** The pipeline depends on ANAC publishing monthly CSVs. There is no automated check for when new data arrives.
 
+See [ROADMAP.md](ROADMAP.md) for the planned evolution.
+
+---
+
+## Data Sources
+
+All data comes from the public open data portal of ANAC, Brazil's National Civil Aviation Agency ([dados.gov.br](https://dados.gov.br)):
+
+| Dataset | Content | Layer |
+|---------|---------|-------|
+| VRA (Voo Regular Ativo) | Monthly flight records with scheduled and actual times | `bronze.vra` |
+| Aerodromes | Registered public and private aerodromes | `bronze.aerodromos` |
+| National and foreign airlines | Air operator registry | `bronze.national_airlines`, `bronze.foreign_airlines` |
+| Operation codes | Seed table for flight type codes | `bronze.operation_codes` |
