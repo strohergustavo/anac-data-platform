@@ -1,0 +1,24 @@
+# Databricks Asset Bundle: deploys the ANAC pipeline as one versioned job.
+#   databricks bundle validate
+#   databricks bundle deploy -t dev
+#   databricks bundle run anac_pipeline -t dev
+bundle:
+  name: anac-data-platform
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog that holds the bronze, silver and gold schemas
+    default: airline_operations
+
+targets:
+  dev:
+    mode: development
+    default: true
+
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}

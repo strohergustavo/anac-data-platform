@@ -4,7 +4,7 @@ An end to end aviation **data Lakehouse on Databricks** that turns ANAC's public
 
 The gold layer follows a **dual model design**, combining a Kimball dimensional model for BI workloads with a **39 column One Big Table** engineered for natural language to SQL agents (Databricks Genie). Everything is governed by **Unity Catalog**, with end to end lineage, tags and complete column documentation that grounds the AI semantically, and the full pipeline refreshes in **under two minutes** on serverless compute.
 
-**Contents:** [Architecture](#architecture-overview) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality--validation-strategy) · [Deep Dives](#deep-dives) · [Lessons Learned](#lessons-learned) · [Limitations](#known-limitations) · [Roadmap](#roadmap) · [Data Sources](#data-sources)
+**Contents:** [Architecture](#architecture-overview) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Testing](#testing) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality--validation-strategy) · [Deep Dives](#deep-dives) · [Lessons Learned](#lessons-learned) · [Limitations](#known-limitations) · [Roadmap](#roadmap) · [Data Sources](#data-sources)
 
 ---
 
@@ -92,12 +92,52 @@ The OBT (`obt_flights`) is a deliberate departure from pure Kimball — it denor
 - UC Volume: `airline_operations.bronze.data` containing ANAC CSV files
 - Git credential linked to this repository
 
-### Run the Pipeline
+### Deploy and Run
 
-Execute the notebooks in order:
+The whole pipeline ships as a **Databricks Asset Bundle** (`databricks.yml`). One command deploys a job with every step wired as a dependency graph, plus the Spark Declarative Pipeline that runs the data contract.
+
+```bash
+databricks bundle validate
+databricks bundle deploy -t dev
+databricks bundle run anac_pipeline -t dev
+```
+
+```mermaid
+flowchart LR
+    BV[bronze_vra] --> SM[silver_mirror]
+    BR[bronze_reference] --> SM
+    SM --> DC[silver_data_contract]
+    SM --> GD[gold_dim_airport]
+    SM --> GF[gold_fact_flights]
+    GD --> GO[gold_obt_flights]
+    GF --> GO
+    GO --> GV[gold_governance]
+    DC --> GV
+    GV --> QC[data_quality_checks]
+```
+
+The job is scheduled for the 5th of each month (ANAC publishes VRA monthly) and ships **paused**, so it only runs when you unpause it. Every notebook is idempotent (`CREATE OR REPLACE` / `mode("overwrite")`), so any task can be safely rerun.
+
+> If the data contract pipeline was created by hand before, delete it once so the bundle can take ownership of `silver.vra_quarentena`.
+
+<details>
+<summary><b>Run the notebooks manually instead</b></summary>
 
 | Step | Notebook | Action |
 |------|----------|--------|
+| 1 | `src/bronze/01_ingest_vra.py` | Ingest VRA CSVs → `bronze.vra` |
+| 2 | `src/bronze/02_ingest_reference_data.py` | Ingest aerodromes, airlines, op codes → `bronze.*` |
+| 3 | `src/silver/01_silver_mirror.py` | Type-cast, enrich, rename → `silver.*` |
+| 4 | `src/silver/transformations/01-03_*.sql` | SDP pipeline: mark → audit → quarantine |
+| 5 | `src/gold/02_gold_dim_airport.py` | Build airport dimension |
+| 6 | `src/gold/03_gold_fact_flights.py` | Build fact table with business rules |
+| 7 | `src/gold/01_gold_obt_flights.py` | Build denormalized OBT |
+| 8 | `src/gold/04_gold_governance.py` | Apply comments, tags, run validation |
+| 9 | `src/checks/data_quality_checks.py` | Post-load quality gate |
+
+</details>
+
+------|----------|--------|
 | 1 | `src/bronze/01_ingest_vra.py` | Ingest VRA CSVs → `bronze.vra` |
 | 2 | `src/bronze/02_ingest_reference_data.py` | Ingest aerodromes, airlines, op codes → `bronze.*` |
 | 3 | `src/silver/01_silver_mirror.py` | Type-cast, enrich, rename → `silver.*` |
@@ -133,12 +173,42 @@ anac-data-platform/
 │       ├── 02_gold_dim_airport.py         # Dimension: airports (unified origin/dest)
 │       ├── 03_gold_fact_flights.py        # Fact: flight steps with resolved FKs
 │       └── 04_gold_governance.py          # Column comments, UC tags, validation
-├── assets/                              # README header
+├── src/checks/
+│   └── data_quality_checks.py             # Post-load quality gate (last job task)
+├── tests/                                 # pytest suite running the notebooks' SQL
+├── resources/
+│   └── anac_pipeline.yml                  # Job + data contract pipeline definition
+├── .github/workflows/ci.yml               # Runs the tests on every push
+├── assets/                                # README header
 ├── docs/
 │   └── data_catalog.py                    # Notebook-format data dictionary
+├── databricks.yml                         # Asset Bundle (dev and prod targets)
+├── requirements-dev.txt
+├── pytest.ini
 ├── .gitignore
 └── README.md
 ```
+
+---
+
+## Testing
+
+Quality is enforced at two levels.
+
+**Transformation tests (CI).** `tests/` holds 18 pytest cases that run on a local Spark session in GitHub Actions on every push and pull request. They do not reimplement the logic. They extract the **exact SQL the notebooks execute** and run it against small handcrafted fixtures, so a change to a business rule in a notebook is caught before it reaches Databricks.
+
+| Area | What is verified |
+|------|------------------|
+| Silver mirror | Row count preserved, literal `'null'` strings become real NULLs, delay and recovery arithmetic |
+| Gold fact | Exact duplicates removed, 15 minute punctuality boundary, implausible delays nulled not dropped, flight scope, airline fallback names, active registry record wins |
+| Quarantine | Clean flights stay out, every broken rule is listed, foreign airports are flagged |
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+**Quality gate after every load (Databricks).** The last job task, `src/checks/data_quality_checks.py`, checks the invariants across layers on the real data and **fails the run** if any breaks. It verifies that silver mirrors bronze, that gold drops only exact duplicates, that the OBT keeps every fact row, that the fact grain is unique, that every origin airport exists in `dim_airport`, that punctuality follows the 15 minute rule, that the quarantine stays diagnostic and that gold tables carry their tags.
 
 ---
 
@@ -447,7 +517,7 @@ Current version counts: `bronze.vra` (16), `silver.vra` (28), `gold.obt_flights`
 | Tag coverage | 100% | Governance notebook validation query |
 | Genie query latency P50 | < 2 s | Serverless compute metrics |
 
-*Note: Automated alerts are a planned enhancement — see the [Roadmap](#roadmap). Currently, the governance notebook provides manual validation.*
+*Note: The post-load quality gate fails the job when an invariant breaks. Notifications on that failure (email or Slack) are on the [Roadmap](#roadmap).*
 
 </details>
 
@@ -668,13 +738,13 @@ RESTORE TABLE airline_operations.gold.obt_flights TO VERSION AS OF N;
 
 1. **No incremental loading:** Full refresh reprocesses all 1M rows on every run. Acceptable at current scale; needs Auto Loader + `MERGE INTO` at >10M rows.
 
-2. **No automated alerting:** The governance notebook provides validation queries but does not send alerts. Databricks SQL alerts or job failure notifications are planned.
+2. **No failure notifications:** The quality gate fails the job when an invariant breaks, but nobody is notified yet. Job email or Slack notifications are planned.
 
 3. **No partitioning or clustering:** Full scans are optimal at <1M rows. At scale, partition pruning or liquid clustering will be needed.
 
 4. **Single catalog, single workspace:** The pipeline assumes `airline_operations` catalog exists with `bronze`, `silver`, `gold` schemas. No multi-environment (dev/staging/prod) setup is documented.
 
-5. **No CI/CD:** Notebooks are version-controlled via Git but not deployed through a pipeline. Databricks Asset Bundles are the planned approach.
+5. **No continuous deployment:** CI runs the test suite on every push, but deploying the bundle is still a manual `databricks bundle deploy`.
 
 6. **Genie Agent quality is unmeasured:** The OBT schema is designed for LLM consumption, but Genie Agent query accuracy has not been systematically evaluated. An evaluation harness is planned.
 
@@ -687,8 +757,8 @@ RESTORE TABLE airline_operations.gold.obt_flights TO VERSION AS OF N;
 
 **Next**
 - **Complete the star schema.** Split airline and date attributes out of `fact_flights` into `dim_airline` and `dim_date`.
-- **Automated alerting.** Databricks SQL alerts on the governance checks (row counts, comment and tag coverage) and on pipeline failures.
-- **CI/CD.** Deploy with Databricks Asset Bundles across separate `dev`, `staging` and `prod` catalogs.
+- **Failure notifications.** Email or Slack notifications when the quality gate fails the job.
+- **Continuous deployment.** Deploy the bundle to `prod` from CI after tests pass, with separate `dev` and `prod` catalogs.
 - **Genie evaluation.** Run a curated set of questions and measure table, column and filter accuracy.
 - **Data freshness.** Detect new monthly VRA files on dados.gov.br and trigger ingestion automatically.
 
