@@ -2,7 +2,7 @@
 
 An end to end aviation **data Lakehouse on Databricks** that turns ANAC's public flight records into decision ready analytics. Over **1 million flights** move through an idempotent **medallion architecture** (bronze → silver → gold), where a declarative data quality framework of **9 expectations** isolates **21% of anomalous records** into a diagnostic quarantine without losing a single row.
 
-The gold layer follows a **dual model design**: a Kimball dimensional model for BI workloads and a **39 column One Big Table** engineered for natural language to SQL agents (Databricks Genie). Everything is governed by **Unity Catalog**, with end to end lineage, tags and complete column documentation that grounds the AI semantically, and the full pipeline refreshes in **under two minutes** on serverless compute.
+The gold layer follows a **dual model design**, combining a Kimball dimensional model for BI workloads with a **39 column One Big Table** engineered for natural language to SQL agents (Databricks Genie). Everything is governed by **Unity Catalog**, with end to end lineage, tags and complete column documentation that grounds the AI semantically, and the full pipeline refreshes in **under two minutes** on serverless compute.
 
 **Contents:** [Architecture](#architecture-overview) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality--validation-strategy) · [Deep Dives](#deep-dives) · [Lessons Learned](#lessons-learned) · [Limitations](#known-limitations) · [Roadmap](#roadmap) · [Data Sources](#data-sources)
 
@@ -13,57 +13,47 @@ The gold layer follows a **dual model design**: a Kimball dimensional model for 
 The platform follows the **medallion architecture** (bronze → silver → gold), a pattern popularized by Databricks that applies progressive data refinement. Each layer has a single, non-overlapping responsibility.
 
 ```mermaid
-graph TD
-    subgraph Sources["ANAC Public Data (dados.gov.br)"]
-        VRA["VRA Monthly CSVs"]
-        AER["Aerodromes CSV"]
-        NAT["National Airlines CSV"]
-        FOR["Foreign Airlines CSV"]
-        OPC["Operation Codes (seed)"]
+flowchart LR
+    subgraph SRC["ANAC open data"]
+        VRA["VRA monthly CSVs"]
+        REF["Reference CSVs<br/>aerodromes · airlines · op codes"]
     end
 
-    subgraph Bronze["Bronze Layer — Raw"]
+    subgraph BRZ["Bronze · raw"]
         BV["bronze.vra<br/>1,014,705 rows"]
-        BA["bronze.aerodromos"]
-        BN["bronze.national_airlines"]
-        BF["bronze.foreign_airlines"]
-        BO["bronze.operation_codes"]
+        BR["bronze reference tables"]
     end
 
-    subgraph Silver["Silver Layer — Typed & Enriched"]
+    subgraph SLV["Silver · typed and checked"]
         SV["silver.vra<br/>1,014,705 rows"]
-        SA["silver.aerodromes"]
-        SL["silver.airlines"]
-        SO["silver.operation_codes"]
-        SQ["silver.vra_quarentena<br/>213,545 rows (21%)"]
+        SR["silver reference tables"]
     end
 
-    subgraph Gold["Gold Layer — Consumption"]
+    subgraph GLD["Gold · consumption"]
         GF["gold.fact_flights<br/>1,014,664 rows"]
-        GD["gold.dim_airport<br/>396 rows"]
-        GO["gold.obt_flights<br/>1,014,664 rows, 39 cols"]
+        GD["gold.dim_airport<br/>396 airports"]
+        GO["gold.obt_flights<br/>39 columns"]
     end
 
-    VRA --> BV
-    AER --> BA
-    NAT --> BN
-    FOR --> BF
-    OPC --> BO
+    SQ["silver.vra_quarentena<br/>213,545 rows flagged"]
+    BI(["BI dashboards"])
+    GN(["Genie AI agent"])
 
-    BV --> SV
-    BA --> SA
-    BN --> SL
-    BF --> SL
-    BO --> SO
-    SV --> SQ
-
+    VRA -->|PySpark| BV
+    REF -->|PySpark| BR
+    BV -->|9 expectations| SV
+    BR --> SR
     SV --> GF
-    SL --> GF
-    SO --> GF
-    SV --> GD
-    SA --> GD
+    SR -->|lookups| GF
+    SR --> GD
     GF --> GO
     GD --> GO
+    GF --> BI
+    GO --> GN
+    SV -.->|diagnostic only| SQ
+
+    classDef quarantine stroke:#D9663E,stroke-dasharray:5 5
+    class SQ quarantine
 ```
 
 | Layer | Responsibility | Format | Pattern | Row Count |
@@ -85,11 +75,11 @@ The OBT (`obt_flights`) is a deliberate departure from pure Kimball — it denor
 
 ## Key Findings
 
-- **Three airlines carry the market:** TAM, AZU and GLO account for **83.3%** of all flight records.
-- **Delays are often recovered in the air:** **645,914** flight steps arrived less delayed than they departed.
-- **One in five records needs care:** **21.05%** of rows fail at least one data quality rule, mostly missing scheduled times and foreign carriers outside the ANAC registry.
-- **International routes are real, not errors:** **22%** of destination codes are foreign airports, handled with a fallback name in `dim_airport`.
-- **Summer peaks:** December and January are the busiest months (85,452 and 88,965 flights), February the quietest (77,136).
+- **Three airlines carry the market.** TAM, AZU and GLO account for **83.3%** of all flight records.
+- **Delays are often recovered in the air.** **645,914** flight steps arrived less delayed than they departed.
+- **One in five records needs care.** **21.05%** of rows fail at least one data quality rule, mostly missing scheduled times and foreign carriers outside the ANAC registry.
+- **International routes are real, not errors.** **22%** of destination codes are foreign airports, handled with a fallback name in `dim_airport`.
+- **Summer peaks.** December and January are the busiest months (85,452 and 88,965 flights), February the quietest (77,136).
 
 ---
 
@@ -696,19 +686,19 @@ RESTORE TABLE airline_operations.gold.obt_flights TO VERSION AS OF N;
 ## Roadmap
 
 **Next**
-- **Complete the star schema:** split airline and date attributes out of `fact_flights` into `dim_airline` and `dim_date`.
-- **Automated alerting:** Databricks SQL alerts on the governance checks (row counts, comment and tag coverage) and on pipeline failures.
-- **CI/CD:** deploy with Databricks Asset Bundles across separate `dev`, `staging` and `prod` catalogs.
-- **Genie evaluation:** run a curated set of questions and measure table, column and filter accuracy.
-- **Data freshness:** detect new monthly VRA files on dados.gov.br and trigger ingestion automatically.
+- **Complete the star schema.** Split airline and date attributes out of `fact_flights` into `dim_airline` and `dim_date`.
+- **Automated alerting.** Databricks SQL alerts on the governance checks (row counts, comment and tag coverage) and on pipeline failures.
+- **CI/CD.** Deploy with Databricks Asset Bundles across separate `dev`, `staging` and `prod` catalogs.
+- **Genie evaluation.** Run a curated set of questions and measure table, column and filter accuracy.
+- **Data freshness.** Detect new monthly VRA files on dados.gov.br and trigger ingestion automatically.
 
 **When volume grows past ~5M rows**
-- **Incremental loads:** Auto Loader in bronze and `MERGE INTO` in silver and gold.
+- **Incremental loads.** Auto Loader in bronze and `MERGE INTO` in silver and gold.
 - **Liquid clustering** on `icao_airline` + `scheduled_departure_date`.
 
 **Later**
 - **Historical backfill** beyond the current 12 month window.
-- **More ANAC datasets:** airport infrastructure and passenger volumes.
+- **More ANAC datasets.** Airport infrastructure and passenger volumes.
 
 ---
 
