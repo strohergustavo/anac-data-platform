@@ -704,7 +704,7 @@ RESTORE TABLE airline_operations.gold.obt_flights TO VERSION AS OF N;
 
 ## Data Sources
 
-All data comes from the public open data portal of ANAC, Brazil's National Civil Aviation Agency ([dados.gov.br](https://dados.gov.br)):
+All data comes from the public open data portal of ANAC, Brazil's National Civil Aviation Agency ([dados.gov.br](https://dados.gov.br)).
 
 | Dataset | Content | Layer |
 |---------|---------|-------|
