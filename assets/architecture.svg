@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="536" viewBox="0 0 1200 536" role="img" aria-label="Architecture: ANAC open data flows into bronze, silver and gold layers on Databricks, consumed by BI dashboards and the Genie AI agent.">
+<defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#151B23"/></pattern></defs>
+<rect width="1200" height="536" rx="18" fill="#010409"/>
+<rect width="1200" height="536" rx="18" fill="url(#grid)"/>
+<rect x=".5" y=".5" width="1199" height="535" rx="18" fill="none" stroke="#1F242B"/>
+<text x="48" y="70" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#F0F6FC">Sources</text>
+<text x="48" y="92" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="13" fill="#8B949E">ANAC open data</text>
+<path d="M60 110 V132" stroke="#D9663E" stroke-width="1.6"/><path d="M55 127 L60 133 L65 127" fill="none" stroke="#D9663E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="230" y="40" width="159" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="245" y="67" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" fill="#E6EDF3">VRA monthly CSVs</text>
+<text x="245" y="87" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">flight records</text>
+<rect x="399.2" y="40" width="110" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="414.2" y="67" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" fill="#E6EDF3">Aerodromes</text>
+<text x="414.2" y="87" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">registry</text>
+<rect x="519.2" y="40" width="154" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="534.2" y="67" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" fill="#E6EDF3">Airlines</text>
+<text x="534.2" y="87" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">national + foreign</text>
+<rect x="683.2" y="40" width="151" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="698.2" y="67" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" fill="#E6EDF3">Operation codes</text>
+<text x="698.2" y="87" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">seed</text>
+<text x="48" y="168" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#F0F6FC">Bronze</text>
+<text x="48" y="190" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="13" fill="#8B949E">raw, all string</text>
+<path d="M60 208 V230" stroke="#D9663E" stroke-width="1.6"/><path d="M55 225 L60 231 L65 225" fill="none" stroke="#D9663E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="230" y="138" width="126" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="245" y="165" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">bronze.vra</text>
+<text x="245" y="185" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">1,014,705 rows</text>
+<rect x="366.0" y="138" width="164" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="381.0" y="175" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">bronze.aerodromos</text>
+<rect x="540.0" y="138" width="164" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="555.0" y="175" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">bronze.*_airlines</text>
+<rect x="714.0" y="138" width="204" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="729.0" y="175" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">bronze.operation_codes</text>
+<text x="48" y="266" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#F0F6FC">Silver</text>
+<text x="48" y="288" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="13" fill="#8B949E">typed, enriched, checked</text>
+<path d="M60 306 V328" stroke="#D9663E" stroke-width="1.6"/><path d="M55 323 L60 329 L65 323" fill="none" stroke="#D9663E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="230" y="236" width="126" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="245" y="263" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">silver.vra</text>
+<text x="245" y="283" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">1,014,705 rows</text>
+<rect x="366.0" y="236" width="196" height="64" rx="10" fill="#0D1117" stroke="#D9663E"/>
+<text x="381.0" y="263" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#D9663E">silver.vra_quarentena</text>
+<text x="381.0" y="283" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">213,545 rows · 21%</text>
+<rect x="572.0" y="236" width="164" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="587.0" y="273" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">silver.aerodromes</text>
+<rect x="746.0" y="236" width="148" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="761.0" y="273" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">silver.airlines</text>
+<rect x="904.0" y="236" width="204" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="919.0" y="273" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">silver.operation_codes</text>
+<text x="48" y="364" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#F0F6FC">Gold</text>
+<text x="48" y="386" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="13" fill="#8B949E">consumption</text>
+<path d="M60 404 V426" stroke="#D9663E" stroke-width="1.6"/><path d="M55 421 L60 427 L65 421" fill="none" stroke="#D9663E" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="230" y="334" width="164" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="245" y="361" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">gold.fact_flights</text>
+<text x="245" y="381" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">star schema · fact</text>
+<rect x="404.0" y="334" width="156" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="419.0" y="361" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">gold.dim_airport</text>
+<text x="419.0" y="381" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">396 airports</text>
+<rect x="570.0" y="334" width="189" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="585.0" y="361" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="13" fill="#E6EDF3">gold.obt_flights</text>
+<text x="585.0" y="381" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">one big table · 39 cols</text>
+<text x="48" y="462" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#F0F6FC">Consumers</text>
+<rect x="230" y="432" width="135" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="245" y="459" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" fill="#E6EDF3">BI dashboards</text>
+<text x="245" y="479" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">star schema</text>
+<rect x="374.6" y="432" width="143" height="64" rx="10" fill="#0D1117" stroke="#30363D"/>
+<text x="389.6" y="459" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="14" fill="#E6EDF3">Genie AI agent</text>
+<text x="389.6" y="479" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" font-size="12.5" fill="#8B949E">OBT</text>
+</svg>

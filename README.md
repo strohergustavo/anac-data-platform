@@ -1,6 +1,6 @@
 <img src="assets/header.svg" width="100%" alt="ANAC Flight Analytics Platform. A medallion Lakehouse on Databricks for Brazil's civil aviation data." />
 
-An end to end data platform that turns **Brazil's public civil aviation records** into analytics ready tables. Raw ANAC files land in a **bronze** layer, are typed and checked against a data contract in **silver**, and become a **gold** layer modeled twice: a star schema for BI dashboards and a single wide table designed for **AI agents (Databricks Genie)** to answer questions in plain Portuguese.
+An end to end data platform that turns **Brazil's public civil aviation records** into analytics ready tables. Raw ANAC files land in a **bronze** layer, are typed and checked against a data contract in **silver**, and become a **gold** layer modeled twice: a star schema for BI dashboards and a single wide table designed for **AI agents (Databricks Genie)**.
 
 <img src="assets/metrics.svg" width="100%" alt="1M+ flight records, 12 months of data, 9 data quality rules, 21% rows quarantined, under 2 minutes end to end refresh" />
 
@@ -12,60 +12,7 @@ An end to end data platform that turns **Brazil's public civil aviation records*
 
 The platform follows the **medallion architecture** (bronze → silver → gold), a pattern popularized by Databricks that applies progressive data refinement. Each layer has a single, non-overlapping responsibility.
 
-```mermaid
-%%{init: {'theme':'base','themeVariables':{'primaryColor':'#0D1117','primaryTextColor':'#E6EDF3','primaryBorderColor':'#D9663E','lineColor':'#D9663E','secondaryColor':'#0D1117','tertiaryColor':'#010409','clusterBkg':'#0D1117','clusterBorder':'#30363D','titleColor':'#E6EDF3','fontFamily':'-apple-system, Segoe UI, Helvetica, Arial, sans-serif'}}}%%
-graph TD
-    subgraph Sources["ANAC Public Data (dados.gov.br)"]
-        VRA["VRA Monthly CSVs"]
-        AER["Aerodromes CSV"]
-        NAT["National Airlines CSV"]
-        FOR["Foreign Airlines CSV"]
-        OPC["Operation Codes (seed)"]
-    end
-
-    subgraph Bronze["Bronze Layer — Raw"]
-        BV["bronze.vra<br/>1,014,705 rows"]
-        BA["bronze.aerodromos"]
-        BN["bronze.national_airlines"]
-        BF["bronze.foreign_airlines"]
-        BO["bronze.operation_codes"]
-    end
-
-    subgraph Silver["Silver Layer — Typed & Enriched"]
-        SV["silver.vra<br/>1,014,705 rows"]
-        SA["silver.aerodromes"]
-        SL["silver.airlines"]
-        SO["silver.operation_codes"]
-        SQ["silver.vra_quarentena<br/>213,545 rows (21%)"]
-    end
-
-    subgraph Gold["Gold Layer — Consumption"]
-        GF["gold.fact_flights<br/>1,014,664 rows"]
-        GD["gold.dim_airport<br/>396 rows"]
-        GO["gold.obt_flights<br/>1,014,664 rows, 39 cols"]
-    end
-
-    VRA --> BV
-    AER --> BA
-    NAT --> BN
-    FOR --> BF
-    OPC --> BO
-
-    BV --> SV
-    BA --> SA
-    BN --> SL
-    BF --> SL
-    BO --> SO
-    SV --> SQ
-
-    SV --> GF
-    SL --> GF
-    SO --> GF
-    SV --> GD
-    SA --> GD
-    GF --> GO
-    GD --> GO
-```
+<img src="assets/architecture.svg" width="100%" alt="Architecture: ANAC open data flows into bronze, silver and gold layers on Databricks, consumed by BI dashboards and the Genie AI agent." />
 
 | Layer | Responsibility | Format | Pattern | Row Count |
 |-------|---------------|--------|---------|-----------|
