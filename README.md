@@ -528,6 +528,8 @@ Current version counts: `bronze.vra` (16), `silver.vra` (28), `gold.obt_flights`
 | Genie query latency P50 | < 2 s | Serverless compute metrics |
 
 
+*Note: The job emails the owner when any task fails, and the post load quality gate fails the run when an invariant breaks. Slack notifications and SQL threshold alerts are on the [Roadmap](#roadmap).*
+
 #### Access Control
 
 | Principal | Bronze | Silver | Gold | Volume |
@@ -553,30 +555,6 @@ Current version counts: `bronze.vra` (16), `silver.vra` (28), `gold.obt_flights`
 3. New columns require UC comments in Portuguese
 4. New tables require UC tags
 5. Breaking changes require version bump and migration guide
-
-#### Column Documentation
-
-100% of silver and gold columns have non-empty UC comments in Portuguese (for Genie Agent compatibility). Comments describe business semantics, not just column names — e.g., `minutes_recovered`: *"Minutos que a etapa recuperou no ar: atraso de partida menos atraso de chegada. Positivo significa que chegou MENOS ATRASADA do que saiu, e NAO que chegou no horario."*
-
-#### Audit Trail
-
-- **Schema changes:** Tracked via Delta transaction log (`DESCRIBE HISTORY`)
-- **Data changes:** Tracked via Delta versions (time travel)
-- **Access:** Tracked via `system.access.table_lineage` and `system.access.audit`
-- **Code changes:** Tracked via Git (this repository)
-
-#### SLA & Alerting
-
-| Metric | Target | Alert |
-|--------|--------|-------|
-| Pipeline completion | < 5 min | Databricks job timeout |
-| Row count (bronze -> silver) | Exact match | Governance notebook validation query |
-| Row count (silver -> gold) | <= 41 row difference (dedup) | Governance notebook validation query |
-| Column comment coverage | 100% | Governance notebook validation query |
-| Tag coverage | 100% | Governance notebook validation query |
-| Genie query latency P50 | < 2 s | Serverless compute metrics |
-
-*Note: The job emails the owner when any task fails, and the post load quality gate fails the run when an invariant breaks. Slack notifications and SQL threshold alerts are on the [Roadmap](#roadmap).*
 
 </details>
 
