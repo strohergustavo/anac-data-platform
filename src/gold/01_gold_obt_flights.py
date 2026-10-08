@@ -7,6 +7,7 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,OBT SELECT
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE TABLE airline_operations.gold.obt_flights AS
 # MAGIC SELECT
@@ -21,21 +22,20 @@
 # MAGIC   f.flight_scope,
 # MAGIC
 # MAGIC   f.icao_origin,
-# MAGIC   o.airport_name        AS origin_airport_name,
-# MAGIC   o.airport_municipality   AS origin_municipality,
-# MAGIC   o.airport_state          AS origin_state,
-# MAGIC   o.airport_country        AS origin_country,
+# MAGIC   o.airport_name            AS origin_airport_name,
+# MAGIC   o.airport_municipality    AS origin_municipality,
+# MAGIC   o.airport_state           AS origin_state,
+# MAGIC   o.airport_country         AS origin_country,
 # MAGIC
 # MAGIC   f.icao_destination,
-# MAGIC   d.airport_name        AS destination_airport_name,
-# MAGIC   d.airport_municipality   AS destination_municipality,
-# MAGIC   d.airport_state          AS destination_state,
-# MAGIC   d.airport_country        AS destination_country,
-# MAGIC
+# MAGIC   d.airport_name            AS destination_airport_name,
+# MAGIC   d.airport_municipality    AS destination_municipality,
+# MAGIC   d.airport_state           AS destination_state,
+# MAGIC   d.airport_country         AS destination_country,
 # MAGIC
 # MAGIC   f.route                                                            AS route_icao,
-# MAGIC   concat(coalesce(o.airport_municipality, f.icao_origin),  ' - ',
-# MAGIC          coalesce(d.airport_municipality, f.icao_destination))           AS route_municipalities,
+# MAGIC   concat(coalesce(o.airport_municipality, f.icao_origin), ' - ',
+# MAGIC          coalesce(d.airport_municipality, f.icao_destination))         AS route_municipalities,
 # MAGIC
 # MAGIC   f.scheduled_departure,
 # MAGIC   f.scheduled_departure_date,
@@ -59,6 +59,7 @@
 # MAGIC   f.flight_cancelled,
 # MAGIC
 # MAGIC   f._processed_at
+# MAGIC
 # MAGIC FROM airline_operations.gold.fact_flights f
 # MAGIC LEFT JOIN airline_operations.gold.dim_airport o ON f.icao_origin      = o.icao_airport
 # MAGIC LEFT JOIN airline_operations.gold.dim_airport d ON f.icao_destination = d.icao_airport

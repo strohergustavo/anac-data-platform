@@ -7,22 +7,24 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Config
 from pyspark.sql import functions as F
 
-path = "/Volumes/airline_operations/bronze/data/VRA/*.csv"
-table = "airline_operations.bronze.vra"
+VRA_CSV_PATH = "/Volumes/airline_operations/bronze/data/VRA/*.csv"
+BRONZE_VRA_TABLE = "airline_operations.bronze.vra"
 
 # COMMAND ----------
 
+# DBTITLE 1,Read CSVs
 raw_df = (
     spark.read.format("csv")
     .option("sep", ";")
     .option("header", "true")
-    .option("skipRows", 1)          
+    .option("skipRows", 1)  # skip ANAC metadata header row
     .option("escape", '"')
     .option("encoding", "UTF-8")
-    .option("mode", "PERMISSIVE")  
-    .load(path)
+    .option("mode", "PERMISSIVE")  # keep malformed rows, fill with null
+    .load(VRA_CSV_PATH)
 )
 
 print("columns read from file:")
@@ -31,7 +33,8 @@ for c in raw_df.columns:
 
 # COMMAND ----------
 
-bronze = raw_df.withColumn(
+# DBTITLE 1,Add audit columns
+bronze_df = raw_df.withColumn(
     "_arquivo_origem", F.col("_metadata.file_name")
 ).withColumn(
     "_ingerido_em", F.current_timestamp()
@@ -40,22 +43,24 @@ bronze = raw_df.withColumn(
 
 # COMMAND ----------
 
+# DBTITLE 1,Write to Delta
 (
-    bronze.write.format("delta")
+    bronze_df.write.format("delta")
     .mode("overwrite")
     .option("overwriteSchema", "true")
     .option("delta.columnMapping.mode", "name")
     .option("delta.enableDeletionVectors", "true")
-    .saveAsTable(table)
+    .saveAsTable(BRONZE_VRA_TABLE)
 )
 
-print(f"{table}: {spark.table(table).count():,} linhas")
+print(f"{BRONZE_VRA_TABLE}: {spark.table(BRONZE_VRA_TABLE).count():,} linhas")
 
 
 # COMMAND ----------
 
+# DBTITLE 1,Table comment
 spark.sql(f"""
-    COMMENT ON TABLE {table} IS
+    COMMENT ON TABLE {BRONZE_VRA_TABLE} IS
     'Bronze - VRA (Voo Regular Ativo) da ANAC, 12 meses (ago/2025 a jul/2026).
      Dado bruto: todas as colunas string, nenhuma linha descartada.
      Carga full refresh idempotente a partir de /Volumes/airline_operations/bronze/data/VRA/.'
@@ -96,10 +101,11 @@ print(f"{len(VRA_COLUMNS)} column comments applied to bronze.vra")
 
 # COMMAND ----------
 
+# DBTITLE 1,Preview: rows by source file
 display(
     spark.sql(f"""
         SELECT _arquivo_origem, COUNT(*) AS linhas, MAX(_ingerido_em) AS ingerido_em
-        FROM {table}
+        FROM {BRONZE_VRA_TABLE}
         GROUP BY _arquivo_origem
         ORDER BY _arquivo_origem
     """)

@@ -7,13 +7,15 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Config
 from pyspark.sql import functions as F
 
-ref = "/Volumes/airline_operations/bronze/data/references"
-no_quotes= chr(0)
+REFERENCE_DATA_PATH = "/Volumes/airline_operations/bronze/data/references"
+no_quotes = chr(0)
 
 # COMMAND ----------
 
+# DBTITLE 1,Ingest aerodromes
 aerodromes = (
     spark.read.format("csv")
     .option("sep", ";")
@@ -21,7 +23,7 @@ aerodromes = (
     .option("skipRows", 1)
     .option("encoding", "ISO-8859-1")  
     .option("quote", no_quotes)          
-    .load(f"{ref}/AerodromosPublicos.csv")
+    .load(f"{REFERENCE_DATA_PATH}/AerodromosPublicos.csv")
 )
 
 aerodromes = aerodromes.select(
@@ -48,6 +50,7 @@ display(spark.sql("SELECT icao, name, municipality, state FROM airline_operation
 
 # COMMAND ----------
 
+# DBTITLE 1,Ingest airlines
 def read_companies(file: str):
     """Read a company registry. No union, no enrichment: one table per file."""
     return (
@@ -57,7 +60,7 @@ def read_companies(file: str):
         .option("skipRows", 1)
         .option("encoding", "UTF-8")
         .option("quote", '"')
-        .load(f"{ref}/{file}")
+        .load(f"{REFERENCE_DATA_PATH}/{file}")
         .select(
             F.col("ICAO").alias("icao"),
             F.col("Estrangeira").alias("iata_code"),
@@ -154,15 +157,26 @@ display(spark.sql("""
 
 # COMMAND ----------
 
-display(spark.sql("""
-    SELECT 'version 0 (first load)' AS version,
-           COUNT(*)                AS rows,
-           MIN(_ingerido_em)       AS ingested_at
-    FROM airline_operations.bronze.vra VERSION AS OF 0
-    UNION ALL
-    SELECT 'current version', COUNT(*), MIN(_ingerido_em)
-    FROM airline_operations.bronze.vra
-"""))
+# Show current row count; time-travel to version 0 is skipped when the
+# Delta history has been vacuumed past the 168-hour retention window.
+try:
+    first_version = spark.sql("DESCRIBE HISTORY airline_operations.bronze.vra").select("version").first()[0]
+    display(spark.sql(f"""
+        SELECT 'first available (v{first_version})' AS version,
+               COUNT(*) AS rows,
+               MIN(_ingerido_em) AS ingested_at
+        FROM airline_operations.bronze.vra VERSION AS OF {first_version}
+        UNION ALL
+        SELECT 'current version', COUNT(*), MIN(_ingerido_em)
+        FROM airline_operations.bronze.vra
+    """))
+except Exception:
+    display(spark.sql("""
+        SELECT 'current version' AS version,
+               COUNT(*) AS rows,
+               MIN(_ingerido_em) AS ingested_at
+        FROM airline_operations.bronze.vra
+    """))
 
 # COMMAND ----------
 

@@ -1,8 +1,14 @@
-# Bronze Layer
+<div align="center">
 
-Raw ingestion of ANAC public data into Delta tables. No transformation, no filtering, no business logic — all columns loaded as strings to preserve the source exactly.
+# 🥉 Bronze Layer
 
-## Tables
+### Raw ingestion — zero transformation, all-string schema
+
+</div>
+
+---
+
+## 📊 Tables
 
 | Table | Source | Rows | Description |
 |-------|--------|-----:|-------------|
@@ -12,14 +18,14 @@ Raw ingestion of ANAC public data into Delta tables. No transformation, no filte
 | `bronze.foreign_airlines` | pda_empresas_aereas_estrangeiros.csv | 148 | Foreign airline registry |
 | `bronze.operation_codes` | (seed) | 13 | DI and line-type code descriptions |
 
-## Notebooks
+## 📓 Notebooks
 
 | File | Description |
 |------|-------------|
 | `01_ingest_vra.py` | Reads all VRA CSVs from volume, loads as strings, applies Delta properties (deletion vectors, column mapping), sets UC tags and column comments |
 | `02_ingest_reference_data.py` | Ingests aerodromes, national/foreign airlines, and seed operation codes |
 
-## Conventions
+## 📐 Conventions
 
 - All columns preserved as `string` — no casting, no filtering
 - Audit columns: `_arquivo_origem` (source file name), `_ingerido_em` (ingestion timestamp)
@@ -28,7 +34,9 @@ Raw ingestion of ANAC public data into Delta tables. No transformation, no filte
 - UC tags applied at ingestion: `layer`, `domain`, `source`, `grain`
 - Column comments in Portuguese
 
-## Dependencies
+## 🔗 Dependencies
 
 - UC Volume: `/Volumes/airline_operations/bronze/data/VRA/*.csv`
 - UC Volume: `/Volumes/airline_operations/bronze/data/references/*.csv`
+
+<p align="right"><a href="#top">⬆ Back to top</a></p>

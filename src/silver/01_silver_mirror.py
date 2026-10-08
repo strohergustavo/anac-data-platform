@@ -19,6 +19,7 @@ display(spark.sql("""
 
 # COMMAND ----------
 
+# DBTITLE 1,Silver VRA mirror
 spark.sql("CREATE SCHEMA IF NOT EXISTS airline_operations.silver")
 
 spark.sql("""
@@ -50,28 +51,30 @@ SELECT
   icao_destination,
 
   scheduled_departure,
-  CAST(scheduled_departure AS DATE)                     AS scheduled_departure_date,
-  date_format(scheduled_departure, 'HH:mm')             AS scheduled_departure_time,
+  CAST(scheduled_departure AS DATE)         AS scheduled_departure_date,
+  date_format(scheduled_departure, 'HH:mm') AS scheduled_departure_time,
 
   actual_departure,
-  CAST(actual_departure AS DATE)                         AS actual_departure_date,
-  date_format(actual_departure, 'HH:mm')                 AS actual_departure_time,
+  CAST(actual_departure AS DATE)         AS actual_departure_date,
+  date_format(actual_departure, 'HH:mm') AS actual_departure_time,
 
   scheduled_arrival,
-  CAST(scheduled_arrival AS DATE)                     AS scheduled_arrival_date,
-  date_format(scheduled_arrival, 'HH:mm')             AS scheduled_arrival_time,
+  CAST(scheduled_arrival AS DATE)         AS scheduled_arrival_date,
+  date_format(scheduled_arrival, 'HH:mm') AS scheduled_arrival_time,
 
   actual_arrival,
-  CAST(actual_arrival AS DATE)                         AS actual_arrival_date,
-  date_format(actual_arrival, 'HH:mm')                 AS actual_arrival_time,
+  CAST(actual_arrival AS DATE)         AS actual_arrival_date,
+  date_format(actual_arrival, 'HH:mm') AS actual_arrival_time,
 
   flight_status,
   justification_code,
 
   CAST(timestampdiff(MINUTE, scheduled_departure, actual_departure) AS INT) AS departure_delay_min,
-  CAST(timestampdiff(MINUTE, scheduled_arrival, actual_arrival) AS INT) AS arrival_delay_min,
-  CAST(timestampdiff(MINUTE, scheduled_departure, actual_departure)
-     - timestampdiff(MINUTE, scheduled_arrival, actual_arrival) AS INT) AS minutes_recovered,
+  CAST(timestampdiff(MINUTE, scheduled_arrival,   actual_arrival)   AS INT) AS arrival_delay_min,
+  CAST(
+    timestampdiff(MINUTE, scheduled_departure, actual_departure)
+    - timestampdiff(MINUTE, scheduled_arrival, actual_arrival)
+  AS INT) AS minutes_recovered,
 
   _arquivo_origem,
   _ingerido_em,

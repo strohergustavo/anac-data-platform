@@ -1,8 +1,14 @@
-# Gold Layer
+<div align="center">
 
-Consumption-ready tables for BI and AI consumption. Contains a Kimball star schema (fact + dimension) and a denormalized One Big Table (OBT) optimized for Genie Agent.
+# 🥇 Gold Layer
 
-## Tables
+### Consumption-ready — star schema + OBT for AI & BI
+
+</div>
+
+---
+
+## 📊 Tables
 
 | Table | Pattern | Rows | Cols | Consumption | Description |
 |-------|---------|-----:|-----:|-------------|-------------|
@@ -10,7 +16,7 @@ Consumption-ready tables for BI and AI consumption. Contains a Kimball star sche
 | `gold.dim_airport` | dimension | 396 | 7 | bi | Unified airport dimension (origin + destination), with ANAC registry fallback |
 | `gold.obt_flights` | obt | 1,014,664 | 39 | genie | Denormalized single-table view for NL2SQL — no joins needed |
 
-## Notebooks
+## 📓 Notebooks
 
 | File | Description |
 |------|-------------|
@@ -19,14 +25,14 @@ Consumption-ready tables for BI and AI consumption. Contains a Kimball star sche
 | `03_gold_fact_flights.py` | Builds fact table: deduplication (41 rows), airline resolution, delay checks, punctuality (15-min threshold) |
 | `04_gold_governance.py` | Applies column comments, UC tags, runs validation queries (coverage, lineage, DQ) |
 
-## Execution Order
+## 📋 Execution Order
 
 1. `02_gold_dim_airport.py` — dimension first (no dependencies on fact)
 2. `03_gold_fact_flights.py` — fact table (independent of dimension)
 3. `01_gold_obt_flights.py` — OBT (joins fact + dimension)
 4. `04_gold_governance.py` — governance (after all gold tables exist)
 
-## Business Rules
+## 📐 Business Rules
 
 - **Deduplication:** 41 exact duplicates removed via `ROW_NUMBER() OVER (PARTITION BY ...)`
 - **Punctuality threshold:** 15 minutes (aligned with ANAC reporting standard)
@@ -35,7 +41,9 @@ Consumption-ready tables for BI and AI consumption. Contains a Kimball star sche
 - **Unknown airline fallback:** `COMPANHIA NAO CADASTRADA (ICAO)`
 - **Flight scope:** Derived from line type code (N/C = Domestico, I/G = Internacional)
 
-## Dependencies
+## 🔗 Dependencies
 
 - Silver layer must be complete (vra, airlines, aerodromes, operation_codes)
 - SDP quarantine can exist but is not required for gold
+
+<p align="right"><a href="#top">⬆ Back to top</a></p>
