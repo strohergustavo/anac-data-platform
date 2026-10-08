@@ -3,20 +3,22 @@
 # MAGIC %md
 # MAGIC # Bronze — VRA Ingestion
 # MAGIC
-# MAGIC Raw ingestion of ANAC's *Voo Regular Ativo* (VRA) dataset from CSV files in the Unity Catalog volume into `airline_operations.bronze.vra`. All columns are loaded as strings with no transformation; metadata columns track provenance and ingestion time. Full-refresh, idempotent load.
+# MAGIC Raw ingestion of ANAC's *Voo Regular Ativo* (VRA) dataset from CSV files in the Unity Catalog volume into `<catalog>.bronze.vra`. All columns are loaded as strings with no transformation; metadata columns track provenance and ingestion time. Full-refresh, idempotent load.
+
+# COMMAND ----------
+
+# MAGIC %run ../common/setup
 
 # COMMAND ----------
 
 # DBTITLE 1,Config
 from pyspark.sql import functions as F
-import logging, time
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s", datefmt="%H:%M:%S")
-logger = logging.getLogger("anac.bronze.vra")
+logger = get_logger("bronze.vra")
 _start = time.time()
 
-VRA_CSV_PATH = "/Volumes/airline_operations/bronze/data/VRA/*.csv"
-BRONZE_VRA_TABLE = "airline_operations.bronze.vra"
+VRA_CSV_PATH = f"/Volumes/{CATALOG}/bronze/data/VRA/*.csv"
+BRONZE_VRA_TABLE = f"{CATALOG}.bronze.vra"
 
 # COMMAND ----------
 
@@ -28,7 +30,8 @@ raw_df = (
     .option("skipRows", 1)  # skip ANAC metadata header row
     .option("escape", '"')
     .option("encoding", "UTF-8")
-    .option("mode", "PERMISSIVE")  # keep malformed rows, fill with null
+    .option("mode", "PERMISSIVE")  # never drop a row
+    .option("rescuedDataColumn", "_rescued_data")  # keep values that do not fit the schema instead of losing them
     .load(VRA_CSV_PATH)
 )
 
@@ -42,7 +45,6 @@ bronze_df = raw_df.withColumn(
 ).withColumn(
     "_ingerido_em", F.current_timestamp()
 )
-
 
 # COMMAND ----------
 
@@ -58,26 +60,21 @@ bronze_df = raw_df.withColumn(
 
 logger.info(f"{BRONZE_VRA_TABLE}: {spark.table(BRONZE_VRA_TABLE).count():,} linhas")
 
-
 # COMMAND ----------
 
 # DBTITLE 1,Table comment
-spark.sql(f"""
-    COMMENT ON TABLE {BRONZE_VRA_TABLE} IS
-    'Bronze - VRA (Voo Regular Ativo) da ANAC, 12 meses (ago/2025 a jul/2026).
-     Dado bruto: todas as colunas string, nenhuma linha descartada.
-     Carga full refresh idempotente a partir de /Volumes/airline_operations/bronze/data/VRA/.'
-""")
+comment_table(
+    BRONZE_VRA_TABLE,
+    "Bronze - VRA (Voo Regular Ativo) da ANAC, 12 meses (ago/2025 a jul/2026). "
+    "Dado bruto: todas as colunas string, nenhuma linha descartada. "
+    f"Carga full refresh idempotente a partir de /Volumes/{CATALOG}/bronze/data/VRA/.",
+)
 
 # COMMAND ----------
 
 # DBTITLE 1,Tags + column comments for bronze.vra
 # --- Tags ---
-spark.sql(f"""
-    ALTER TABLE {BRONZE_VRA_TABLE} SET TAGS (
-        'layer' = 'bronze', 'domain' = 'aviation', 'source' = 'ANAC-VRA', 'grain' = 'flight_step'
-    )
-""")
+tag_table(BRONZE_VRA_TABLE, {"layer": "bronze", "domain": "aviation", "source": "ANAC-VRA", "grain": "flight_step"})
 logger.info("Tags applied to bronze.vra")
 
 # --- Column comments (Portuguese for Genie Agent compatibility) ---
@@ -96,23 +93,11 @@ VRA_COLUMNS = {
     "Código Justificativa":    "Motivo declarado do atraso. Vazio em toda a janela deste projeto (IAC 1504 revogada em abril de 2020).",
     "_arquivo_origem":         "Auditoria: nome do arquivo CSV mensal da ANAC de onde a linha veio.",
     "_ingerido_em":            "Auditoria: momento em que a linha entrou no bronze.",
+    "_rescued_data":           "Auditoria: valores da linha que nao couberam no schema do CSV, em JSON. Nulo quando a linha veio integra.",
 }
 
-for col, comment in VRA_COLUMNS.items():
-    spark.sql(f"ALTER TABLE {BRONZE_VRA_TABLE} ALTER COLUMN `{col}` COMMENT '{comment}'")
+comment_columns(BRONZE_VRA_TABLE, VRA_COLUMNS)
 logger.info(f"{len(VRA_COLUMNS)} column comments applied to bronze.vra")
-
-# COMMAND ----------
-
-# DBTITLE 1,Preview: rows by source file
-display(
-    spark.sql(f"""
-        SELECT _arquivo_origem, COUNT(*) AS linhas, MAX(_ingerido_em) AS ingerido_em
-        FROM {BRONZE_VRA_TABLE}
-        GROUP BY _arquivo_origem
-        ORDER BY _arquivo_origem
-    """)
-)
 
 # COMMAND ----------
 

@@ -19,7 +19,7 @@ The gold layer follows a **dual model design**, combining a Kimball dimensional 
 | **UC tags** | **51 tags** | Across 12 tables (layer, domain, grain, source) |
 | **Genie-optimized** | **OBT** | 39-column single-table for NL2SQL |
 
-**Contents** &nbsp; [Architecture](#architecture) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Testing](#testing) · [Repository](#repository-structure) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality) · [Deep Dives](#deep-dives) · [Lessons](#lessons-learned) · [Limitations](#known-limitations) · [Roadmap](#roadmap) · [Data Sources](#data-sources)
+**Contents** &nbsp; [Architecture](#architecture) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Testing](#testing) · [Practices](#engineering-practices) · [Repository](#repository-structure) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality) · [Deep Dives](#deep-dives) · [Lessons](#lessons-learned) · [Limitations](#known-limitations) · [Roadmap](#roadmap) · [Data Sources](#data-sources)
 
 ---
 
@@ -142,30 +142,20 @@ The job is scheduled for the 5th of each month (ANAC publishes VRA monthly), shi
 <summary><b>Run the notebooks manually instead</b></summary>
 
 | Step | Notebook | Action |
-|------|----------|--------|
+|:----:|----------|--------|
 | 1 | `src/bronze/01_ingest_vra.py` | Ingest VRA CSVs → `bronze.vra` |
-| 2 | `src/bronze/02_ingest_reference_data.py` | Ingest aerodromes, airlines, op codes → `bronze.*` |
-| 3 | `src/silver/01_silver_mirror.py` | Type-cast, enrich, rename → `silver.*` |
-| 4 | `src/silver/transformations/01-03_*.sql` | SDP pipeline: mark → audit → quarantine |
-| 5 | `src/gold/02_gold_dim_airport.py` | Build airport dimension |
-| 6 | `src/gold/03_gold_fact_flights.py` | Build fact table with business rules |
-| 7 | `src/gold/01_gold_obt_flights.py` | Build denormalized OBT |
-| 8 | `src/gold/04_gold_governance.py` | Apply comments, tags, run validation |
-| 9 | `src/checks/data_quality_checks.py` | Post-load quality gate |
+| 2 | `src/bronze/02_ingest_references.py` | Ingest aerodromes, airlines, op codes → `bronze.*` |
+| 3 | `src/silver/01_mirror.py` | Type cast, enrich, rename → `silver.*` |
+| 4 | `src/silver/data_contract/*.sql` | SDP pipeline: mark → audit → quarantine |
+| 5 | `src/gold/01_dim_airport.py` | Build airport dimension |
+| 6 | `src/gold/02_fact_flights.py` | Build fact table with business rules |
+| 7 | `src/gold/03_obt_flights.py` | Build denormalized OBT |
+| 8 | `src/gold/04_governance.py` | Apply comments, tags, run validation |
+| 9 | `src/checks/data_quality_checks.py` | Post load quality gate |
+
+Every notebook reads the `catalog` widget (default `airline_operations`), so the same code runs against any catalog.
 
 </details>
-
-------|----------|--------|
-| 1 | `src/bronze/01_ingest_vra.py` | Ingest VRA CSVs → `bronze.vra` |
-| 2 | `src/bronze/02_ingest_reference_data.py` | Ingest aerodromes, airlines, op codes → `bronze.*` |
-| 3 | `src/silver/01_silver_mirror.py` | Type-cast, enrich, rename → `silver.*` |
-| 4 | `src/silver/transformations/01-03_*.sql` | SDP pipeline: mark → audit → quarantine |
-| 5 | `src/gold/02_gold_dim_airport.py` | Build airport dimension |
-| 6 | `src/gold/03_gold_fact_flights.py` | Build fact table with business rules |
-| 7 | `src/gold/01_gold_obt_flights.py` | Build denormalized OBT |
-| 8 | `src/gold/04_gold_governance.py` | Apply comments, tags, run validation |
-
-Each notebook is idempotent (`CREATE OR REPLACE` / `mode("overwrite")`) and can be re-run safely.
 
 ---
 
@@ -190,49 +180,53 @@ pytest
 
 ---
 
+## Engineering Practices
+
+| Practice | How it shows up in the code |
+|:--|:--|
+| **Configuration as parameters** | The catalog is a job parameter and a notebook widget, never a hardcoded name. The same code runs in any environment. |
+| **Shared setup** | `src/common/setup.py` holds logging and the metadata helpers once, loaded by every notebook with `%run`. |
+| **Idempotent writes** | Every step uses `CREATE OR REPLACE` or `overwrite`, so any task can be rerun without side effects. |
+| **No silent data loss** | Bronze keeps malformed CSV values in `_rescued_data`, silver keeps every row, and quality issues are flagged, never dropped. |
+| **Safe metadata writes** | Comments and tags go through helpers that escape SQL literals and skip columns that do not exist. |
+| **Lean job notebooks** | Exploratory `display` queries were removed from the job path. They cost compute on every run and the quality gate already covers them. |
+| **Tested business rules** | 18 tests run the notebooks' own SQL in CI, and a quality gate checks the real data after every load. |
+| **Infrastructure as code** | The job, its dependency graph, schedule, alerts and the data contract pipeline live in the Asset Bundle. |
+| **Observability** | Structured logs with row counts and timings in every task, plus an email when the job fails. |
+
+---
+
 ## Repository Structure
 
 ```
 anac-data-platform/
 ├── src/
+│   ├── common/
+│   │   └── setup.py                   # Catalog parameter, logging, escaped comment and tag helpers
 │   ├── bronze/
-│   │   ├── README.md
-│   │   ├── 01_ingest_vra.py              # VRA CSV → bronze.vra (full refresh)
-│   │   └── 02_ingest_reference_data.py   # Aerodromes, airlines, op codes → bronze.*
+│   │   ├── 01_ingest_vra.py           # VRA CSV → bronze.vra (raw strings, rescued data column)
+│   │   └── 02_ingest_references.py    # Aerodromes, airlines, op codes → bronze.*
 │   ├── silver/
-│   │   ├── README.md
-│   │   ├── 01_silver_mirror.py           # Bronze → silver (typed, enriched, renamed)
-│   │   └── transformations/
-│   │       ├── 01_vra_marked.sql          # Enrichment flags (ANAC registry joins)
-│   │       ├── 02_vra_audited.sql         # Data contract: 9 expectations (warn mode)
-│   │       └── 03_vra_quarantine.sql       # Diagnostic quarantine materialized view
-│   ├── gold/
-│   │   ├── README.md
-│   │   ├── 01_gold_obt_flights.py         # One Big Table (denormalized, 39 cols)
-│   │   ├── 02_gold_dim_airport.py         # Dimension: airports (unified origin/dest)
-│   │   ├── 03_gold_fact_flights.py        # Fact: flight steps with resolved FKs
-│   │   └── 04_gold_governance.py          # Column comments, UC tags, validation
+│   │   ├── 01_mirror.py               # Bronze → silver (typed, enriched, renamed)
+│   │   └── data_contract/             # Spark Declarative Pipeline
+│   │       ├── 01_vra_marked.sql      # Registry flags
+│   │       ├── 02_vra_audited.sql     # 9 expectations, warn mode
+│   │       └── 03_vra_quarantine.sql  # Diagnostic quarantine view
+│   ├── gold/                          # Numbered in execution order
+│   │   ├── 01_dim_airport.py          # Airport dimension
+│   │   ├── 02_fact_flights.py         # Fact table and business rules
+│   │   ├── 03_obt_flights.py          # One Big Table for Genie
+│   │   └── 04_governance.py           # Comments, tags, validation reports
 │   └── checks/
-│       └── data_quality_checks.py        # Post-load DQ gate (fails job on broken invariants)
+│       └── data_quality_checks.py     # Quality gate that fails the job
+├── tests/                             # pytest suite running the notebooks' own SQL
 ├── resources/
-│   └── anac_pipeline.yml                 # DAB: job + SDP pipeline definitions
-├── tests/
-│   ├── conftest.py                        # PySpark session fixture
-│   ├── fixtures.py                        # Hand-built test inputs
-│   ├── notebook_sql.py                    # Extracts SQL from notebooks for testing
-│   ├── test_silver_mirror.py             # Silver mirror invariants
-│   ├── test_silver_quarantine.py          # Quarantine logic
-│   └── test_gold_fact_flights.py          # Fact table business rules
-├── docs/
-│   └── data_catalog.py                    # Notebook-format data dictionary
-├── assets/
-│   └── header.svg                         # README banner
-├── .github/workflows/
-│   └── ci.yml                             # GitHub Actions: pytest on push/PR
-├── .gitignore
-├── databricks.yml                         # DAB root config (dev + prod targets)
-├── requirements-dev.txt                  # pyspark + pytest for local CI
-├── pytest.ini                             # pytest config
+│   └── anac_pipeline.yml              # Job + data contract pipeline (Asset Bundle)
+├── .github/workflows/ci.yml           # Runs the tests on every push
+├── assets/header.svg                  # README banner
+├── databricks.yml                     # Bundle root (dev and prod targets, catalog variable)
+├── requirements-dev.txt
+├── pytest.ini
 └── README.md
 ```
 
@@ -352,7 +346,7 @@ Nine expectations defined in `02_vra_audited.sql`, all in **warn mode**:
 
 #### Gold Layer Validation
 
-`04_gold_governance.py` runs post-load validation:
+`04_governance.py` runs post-load validation:
 - **Documentation coverage:** Every column in silver and gold must have a non-empty comment (currently 100% coverage, excluding system event-log tables).
 - **Tag audit:** Every gold table carries five UC tags: `layer`, `domain`, `grain`, `pattern`, `consumption`.
 - **Lineage check:** Queries `system.access.table_lineage` to verify the full bronze -> silver -> gold chain.
@@ -483,7 +477,7 @@ Volume (CSV) --> bronze.*_airlines --> silver.airlines -->|
 Volume (CSV) --> bronze.operation_codes --> silver.operation_codes -->|
 ```
 
-The governance notebook (`04_gold_governance.py`) queries this system table to verify the full chain is intact after each gold rebuild.
+The governance notebook (`04_governance.py`) queries this system table to verify the full chain is intact after each gold rebuild.
 
 #### Delta Versioning & Time Travel
 
@@ -689,13 +683,13 @@ The dimensional model (`fact_flights` + `dim_airport`) supports traditional BI t
 **Cause:** Unexpected filtering in the silver mirror SQL.
 **Fix:**
 1. Run `SELECT COUNT(*) FROM airline_operations.bronze.vra` and `SELECT COUNT(*) FROM airline_operations.silver.vra`
-2. If different, check `01_silver_mirror.py` for accidental `WHERE` clauses
+2. If different, check `01_mirror.py` for accidental `WHERE` clauses
 3. Silver must be a lossless mirror — re-run the notebook
 
 ##### Symptom: Quarantine view shows 0 rows
 **Cause:** SDP pipeline not run after silver rebuild.
 **Fix:**
-1. Run `src/silver/transformations/01_vra_marked.sql` first
+1. Run `src/silver/data_contract/01_vra_marked.sql` first
 2. Then `02_vra_audited.sql` (creates the expectation contract)
 3. Then `03_vra_quarantine.sql` (materializes the quarantine view)
 4. Verify: `SELECT COUNT(*) FROM airline_operations.silver.vra_quarentena` should return ~213K
@@ -705,14 +699,14 @@ The dimensional model (`fact_flights` + `dim_airport`) supports traditional BI t
 **Fix:**
 1. Check `SELECT COUNT(*) FROM airline_operations.gold.fact_flights` vs `gold.obt_flights`
 2. If different, verify dim_airport has all ICAO codes: `SELECT COUNT(DISTINCT icao_airport) FROM gold.dim_airport`
-3. Re-run `01_gold_obt_flights.py`
+3. Re-run `03_obt_flights.py`
 
 ##### Symptom: Governance notebook reports missing column comments
 **Cause:** New column added without a comment.
 **Fix:**
 1. Identify the column: `SELECT table_schema, table_name, column_name FROM airline_operations.information_schema.columns WHERE table_schema IN ('silver','gold') AND (comment IS NULL OR comment = '')`
 2. Add a comment: `ALTER TABLE airline_operations.{schema}.{table} ALTER COLUMN {col} COMMENT '...'`
-3. Re-run `04_gold_governance.py`
+3. Re-run `04_governance.py`
 
 ##### Symptom: Genie Agent generates incorrect SQL
 **Cause:** Missing or unclear column comments, or table not tagged `consumption = 'genie'`.
@@ -779,7 +773,7 @@ RESTORE TABLE airline_operations.gold.obt_flights TO VERSION AS OF N;
 
 3. **No partitioning or clustering:** Full scans are optimal at <1M rows. At scale, partition pruning or liquid clustering will be needed.
 
-4. **Single catalog, single workspace:** The pipeline assumes `airline_operations` catalog exists with `bronze`, `silver`, `gold` schemas. The bundle has `dev` and `prod` targets, but both write to the same catalog.
+4. **Single catalog in practice:** Every notebook and the data contract pipeline read the catalog as a parameter, so isolating environments only takes a second catalog and `databricks bundle deploy -t prod --var catalog=<name>`. Today both targets point to `airline_operations`.
 
 5. **No automated deploy pipeline:** The repo ships a Databricks Asset Bundle (`databricks.yml`) with `deploy` and `run` commands, but deploys are manual. CI runs tests on push/PR but does not auto-deploy.
 

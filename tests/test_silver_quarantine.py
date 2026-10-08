@@ -1,9 +1,9 @@
 from fixtures import flight, register_bronze_vra, register_references
 from notebook_sql import query_for
 
-SILVER = query_for("src/silver/01_silver_mirror.py", "silver.vra")
-MARKED = query_for("src/silver/transformations/01_vra_marked.sql", "vra_marcado")
-QUARANTINE = query_for("src/silver/transformations/03_vra_quarantine.sql", "vra_quarentena")
+SILVER = query_for("src/silver/01_mirror.py", "silver.vra")
+MARKED = query_for("src/silver/data_contract/01_vra_marked.sql", "vra_marcado")
+QUARANTINE = query_for("src/silver/data_contract/03_vra_quarantine.sql", "vra_quarentena")
 
 
 def build(spark, rows):

@@ -5,18 +5,23 @@ resources:
       catalog: ${var.catalog}
       schema: silver
       serverless: true
+      configuration:
+        catalog: ${var.catalog}
       libraries:
         - file:
-            path: ../src/silver/transformations/01_vra_marked.sql
+            path: ../src/silver/data_contract/01_vra_marked.sql
         - file:
-            path: ../src/silver/transformations/02_vra_audited.sql
+            path: ../src/silver/data_contract/02_vra_audited.sql
         - file:
-            path: ../src/silver/transformations/03_vra_quarantine.sql
+            path: ../src/silver/data_contract/03_vra_quarantine.sql
 
   jobs:
     anac_pipeline:
       name: anac-flight-analytics
       max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
       email_notifications:
         on_failure:
           - strohergustavo@gmail.com
@@ -32,14 +37,14 @@ resources:
 
         - task_key: bronze_reference
           notebook_task:
-            notebook_path: ../src/bronze/02_ingest_reference_data.py
+            notebook_path: ../src/bronze/02_ingest_references.py
 
         - task_key: silver_mirror
           depends_on:
             - task_key: bronze_vra
             - task_key: bronze_reference
           notebook_task:
-            notebook_path: ../src/silver/01_silver_mirror.py
+            notebook_path: ../src/silver/01_mirror.py
 
         - task_key: silver_data_contract
           depends_on:
@@ -51,27 +56,27 @@ resources:
           depends_on:
             - task_key: silver_mirror
           notebook_task:
-            notebook_path: ../src/gold/02_gold_dim_airport.py
+            notebook_path: ../src/gold/01_dim_airport.py
 
         - task_key: gold_fact_flights
           depends_on:
             - task_key: silver_mirror
           notebook_task:
-            notebook_path: ../src/gold/03_gold_fact_flights.py
+            notebook_path: ../src/gold/02_fact_flights.py
 
         - task_key: gold_obt_flights
           depends_on:
             - task_key: gold_dim_airport
             - task_key: gold_fact_flights
           notebook_task:
-            notebook_path: ../src/gold/01_gold_obt_flights.py
+            notebook_path: ../src/gold/03_obt_flights.py
 
         - task_key: gold_governance
           depends_on:
             - task_key: gold_obt_flights
             - task_key: silver_data_contract
           notebook_task:
-            notebook_path: ../src/gold/04_gold_governance.py
+            notebook_path: ../src/gold/04_governance.py
 
         - task_key: data_quality_checks
           depends_on:

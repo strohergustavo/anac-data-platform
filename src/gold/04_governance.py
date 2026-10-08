@@ -7,28 +7,30 @@
 
 # COMMAND ----------
 
-import logging, time
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s", datefmt="%H:%M:%S")
-logger = logging.getLogger("anac.gold.governance")
+# MAGIC %run ../common/setup
+
+# COMMAND ----------
+
+logger = get_logger("gold.governance")
 _start = time.time()
 
-display(spark.sql("""
+display(spark.sql(f"""
     SELECT
       COUNT(*)                                                      AS recovered_some_minutes,
       SUM(CASE WHEN arrival_delay_min <= 0 THEN 1 ELSE 0 END)      AS arrived_early_or_on_time,
       SUM(CASE WHEN arrival_delay_min >  0 THEN 1 ELSE 0 END)      AS arrived_late_anyway,
       SUM(CASE WHEN arrival_delay_min > 15 THEN 1 ELSE 0 END)      AS arrived_late_over_15
-    FROM airline_operations.gold.obt_flights
+    FROM {CATALOG}.gold.obt_flights
     WHERE minutes_recovered > 0
 """))
 
 # COMMAND ----------
 
-display(spark.sql("""
+display(spark.sql(f"""
     SELECT flight_status,
            COUNT(*)                                                AS flights,
            SUM(CASE WHEN departure_punctual IS NULL THEN 1 ELSE 0 END) AS departure_punctual_null
-    FROM airline_operations.gold.obt_flights GROUP BY flight_status
+    FROM {CATALOG}.gold.obt_flights GROUP BY flight_status
 """))
 
 # COMMAND ----------
@@ -91,8 +93,7 @@ COMMENTS_OBT = {
     "_processed_at":          "Auditoria: momento em que esta linha foi construida na camada gold.",
 }
 
-for column, comment in COMMENTS_OBT.items():
-    spark.sql(f"ALTER TABLE airline_operations.gold.obt_flights ALTER COLUMN {column} COMMENT '{comment}'")
+comment_columns(f"{CATALOG}.gold.obt_flights", COMMENTS_OBT)
 
 logger.info(f"{len(COMMENTS_OBT)} columns commented in gold.obt_flights")
 
@@ -119,33 +120,31 @@ FACT_COLUMNS = [c for c in COMMENTS_FACT if c not in (
     "destination_airport_name", "destination_municipality", "destination_state", "destination_country",
     "route_icao", "route_municipalities")]
 
-for column in FACT_COLUMNS:
-    spark.sql(f"ALTER TABLE airline_operations.gold.fact_flights ALTER COLUMN {column} COMMENT '{COMMENTS_FACT[column]}'")
+comment_columns(f"{CATALOG}.gold.fact_flights", {c: COMMENTS_FACT[c] for c in FACT_COLUMNS})
 logger.info(f"{len(FACT_COLUMNS)} columns commented in gold.fact_flights")
 
-for column, comment in COMMENTS_DIM.items():
-    spark.sql(f"ALTER TABLE airline_operations.gold.dim_airport ALTER COLUMN {column} COMMENT '{comment}'")
+comment_columns(f"{CATALOG}.gold.dim_airport", COMMENTS_DIM)
 logger.info(f"{len(COMMENTS_DIM)} columns commented in gold.dim_airport")
 
 
 # COMMAND ----------
 
 GOLD_TABLES = {
-    "airline_operations.gold.obt_flights": (
+    f"{CATALOG}.gold.obt_flights": (
         "Gold - One Big Table de voos da ANAC, desnormalizada e desenhada para consumo por agente de IA. "
         "Uma linha por etapa de voo, com nomes ja resolvidos e metricas prontas: responde as perguntas de "
         "negocio do projeto sem nenhum JOIN. Criterio de pontualidade: 15 minutos. "
         "Voo cancelado nao tem metrica de atraso.",
         {"layer": "gold", "domain": "aviation", "consumption": "genie", "grain": "flight_step", "pattern": "obt"},
     ),
-    "airline_operations.gold.fact_flights": (
+    f"{CATALOG}.gold.fact_flights": (
         "Gold - fato de voos no grao de uma linha por etapa, com companhia e codigos de operacao como "
         "dimensoes degeneradas. E aqui que nascem as regras de negocio: pontualidade a 15 minutos, "
         "escopo domestico/internacional e as decisoes sobre a quarentena. "
         "Contagem = silver.vra menos 41 duplicatas exatas.",
         {"layer": "gold", "domain": "aviation", "consumption": "bi", "grain": "flight_step", "pattern": "fact"},
     ),
-    "airline_operations.gold.dim_airport": (
+    f"{CATALOG}.gold.dim_airport": (
         "Gold - dimensao de aeroporto, servindo origem e destino do fato. Construida a partir dos codigos "
         "presentes no fato e enriquecida pelo cadastro da ANAC, para cobrir 100 por cento do fato inclusive "
         "os aeroportos estrangeiros, que a ANAC nao cadastra.",
@@ -154,18 +153,17 @@ GOLD_TABLES = {
 }
 
 for table, (comment, tags) in GOLD_TABLES.items():
-    spark.sql(f"COMMENT ON TABLE {table} IS '{comment}'")
-    pairs = ", ".join(f"'{k}' = '{v}'" for k, v in tags.items())
-    spark.sql(f"ALTER TABLE {table} SET TAGS ({pairs})")
+    comment_table(table, comment)
+    tag_table(table, tags)
     logger.info(f"{table}: comment + {len(tags)} tags")
 
 # COMMAND ----------
 
-display(spark.sql("""
+display(spark.sql(f"""
     SELECT table_schema, table_name,
            COUNT(*)                                                         AS columns,
            SUM(CASE WHEN comment IS NULL OR comment = '' THEN 1 ELSE 0 END) AS without_comment
-    FROM airline_operations.information_schema.columns
+    FROM {CATALOG}.information_schema.columns
     WHERE table_schema IN ('silver', 'gold')
     GROUP BY table_schema, table_name
     ORDER BY table_schema, table_name
@@ -173,21 +171,21 @@ display(spark.sql("""
 
 # COMMAND ----------
 
-display(spark.sql("""
+display(spark.sql(f"""
     SELECT table_name, tag_name, tag_value
-    FROM airline_operations.information_schema.table_tags
+    FROM {CATALOG}.information_schema.table_tags
     WHERE schema_name = 'gold'
     ORDER BY table_name, tag_name
 """))
 
 # COMMAND ----------
 
-display(spark.sql("""
+display(spark.sql(f"""
     SELECT
       COALESCE(nullif(source_table_full_name, ''), '(file in volume)') AS source,
       target_table_full_name                                             AS target
     FROM system.access.table_lineage
-    WHERE target_table_full_name LIKE 'airline_operations.%'
+    WHERE target_table_full_name LIKE '{CATALOG}.%'
       AND event_date >= current_date() - 7
     GROUP BY 1, 2
     ORDER BY target, source

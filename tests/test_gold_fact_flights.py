@@ -2,8 +2,8 @@ import pytest
 from fixtures import flight, register_bronze_vra, register_references
 from notebook_sql import query_for
 
-SILVER = query_for("src/silver/01_silver_mirror.py", "silver.vra")
-FACT = query_for("src/gold/03_gold_fact_flights.py", "gold.fact_flights")
+SILVER = query_for("src/silver/01_mirror.py", "silver.vra")
+FACT = query_for("src/gold/02_fact_flights.py", "gold.fact_flights")
 
 
 def build(spark, rows):

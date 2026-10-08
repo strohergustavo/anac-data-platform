@@ -1,7 +1,7 @@
 from fixtures import flight, register_bronze_vra
 from notebook_sql import query_for
 
-SILVER = query_for("src/silver/01_silver_mirror.py", "silver.vra")
+SILVER = query_for("src/silver/01_mirror.py", "silver.vra")
 
 
 def build(spark, rows):

@@ -7,12 +7,13 @@
 
 # COMMAND ----------
 
-import logging, time
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s", datefmt="%H:%M:%S")
-logger = logging.getLogger("anac.checks")
+# MAGIC %run ../common/setup
+
+# COMMAND ----------
+
+logger = get_logger("checks")
 _start = time.time()
 
-CATALOG = "airline_operations"
 DEDUP_KEYS = [
     "icao_airline", "flight_number", "di_code", "line_type_code", "icao_origin", "icao_destination",
     "scheduled_departure", "actual_departure", "scheduled_arrival", "actual_arrival", "flight_status",
@@ -81,6 +82,13 @@ untagged = scalar(f"""
       )
 """)
 check("gold tables carry the consumption tag", untagged == 0, f"{untagged} untagged tables")
+
+# Malformed CSV values are kept in _rescued_data instead of being lost. They do not
+# fail the run, but every occurrence is surfaced so someone can look at the source file.
+if "_rescued_data" in spark.table(f"{CATALOG}.bronze.vra").columns:
+    rescued = scalar(f"SELECT COUNT(*) FROM {CATALOG}.bronze.vra WHERE _rescued_data IS NOT NULL")
+    if rescued:
+        logger.warning("bronze.vra has %s row(s) with rescued data; inspect _rescued_data", f"{rescued:,}")
 
 # COMMAND ----------
 
