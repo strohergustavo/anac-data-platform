@@ -817,17 +817,3 @@ All data is public and sourced from **ANAC** (Agência Nacional de Aviação Civ
 | Operation Codes | Flight type code reference | (seed table, not from ANAC) | N/A |
 
 Available at: [dados.gov.br](https://dados.gov.br).
-
----
-
----
-
-<div align="center">
-
-*Built on Databricks Lakehouse · Unity Catalog · Delta Lake · Spark Declarative Pipelines · Genie Agent*
-
-</div>
-
----
-
-<div align="center"><sub>Built on Databricks Lakehouse · Unity Catalog · Delta Lake · Spark Declarative Pipelines · Genie</sub></div>
