@@ -1,14 +1,24 @@
 # Databricks notebook source
-# DBTITLE 1,Bronze — VRA Ingestion
+# DBTITLE 1,Config
 # MAGIC %md
-# MAGIC # Bronze — VRA Ingestion
+# MAGIC from pyspark.sql import functions as F
+# MAGIC import logging, time
 # MAGIC
-# MAGIC Raw ingestion of ANAC's *Voo Regular Ativo* (VRA) dataset from CSV files in the Unity Catalog volume into `airline_operations.bronze.vra`. All columns are loaded as strings with no transformation; metadata columns track provenance and ingestion time. Full-refresh, idempotent load.
+# MAGIC logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s", datefmt="%H:%M:%S")
+# MAGIC logger = logging.getLogger("anac.bronze.vra")
+# MAGIC _start = time.time()
+# MAGIC
+# MAGIC VRA_CSV_PATH
 
 # COMMAND ----------
 
 # DBTITLE 1,Config
 from pyspark.sql import functions as F
+import logging, time
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s", datefmt="%H:%M:%S")
+logger = logging.getLogger("anac.bronze.vra")
+_start = time.time()
 
 VRA_CSV_PATH = "/Volumes/airline_operations/bronze/data/VRA/*.csv"
 BRONZE_VRA_TABLE = "airline_operations.bronze.vra"

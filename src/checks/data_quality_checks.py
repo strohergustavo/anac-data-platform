@@ -7,6 +7,11 @@
 
 # COMMAND ----------
 
+import logging, time
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s", datefmt="%H:%M:%S")
+logger = logging.getLogger("anac.checks")
+_start = time.time()
+
 CATALOG = "airline_operations"
 DEDUP_KEYS = [
     "icao_airline", "flight_number", "di_code", "line_type_code", "icao_origin", "icao_destination",
@@ -80,9 +85,11 @@ check("gold tables carry the consumption tag", untagged == 0, f"{untagged} untag
 # COMMAND ----------
 
 for name, passed, detail in results:
-    print(f"{'PASS' if passed else 'FAIL'}  {name}  ({detail})")
+    level = logging.INFO if passed else logging.ERROR
+    logger.log(level, "%s  %s  (%s)", 'PASS' if passed else 'FAIL', name, detail)
 
 failed = [name for name, passed, _ in results if not passed]
 if failed:
+    logger.error("%d data quality check(s) failed: %s", len(failed), ', '.join(failed))
     raise AssertionError(f"{len(failed)} data quality check(s) failed: {', '.join(failed)}")
-print(f"All {len(results)} checks passed.")
+logger.info("All %d checks passed in %.1fs", len(results), time.time() - _start)

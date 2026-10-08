@@ -11,6 +11,20 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Logging setup
+import logging, time
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s", datefmt="%H:%M:%S")
+logger = logging.getLogger("anac.gold.dim_airport")
+_start = time.time()
+
+# COMMAND ----------
+
+# DBTITLE 1,Log result
+_rows = spark.table("airline_operations.gold.dim_airport").count()
+logger.info("gold.dim_airport: %s rows in %.1fs", f"{_rows:,}", time.time() - _start)
+
+# COMMAND ----------
+
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE TABLE airline_operations.gold.dim_airport AS
 # MAGIC WITH fact_airports AS (

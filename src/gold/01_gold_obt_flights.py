@@ -7,6 +7,20 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Logging setup
+import logging, time
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s", datefmt="%H:%M:%S")
+logger = logging.getLogger("anac.gold.obt")
+_start = time.time()
+
+# COMMAND ----------
+
+# DBTITLE 1,Log result
+_rows = spark.table("airline_operations.gold.obt_flights").count()
+logger.info("gold.obt_flights: %s rows in %.1fs", f"{_rows:,}", time.time() - _start)
+
+# COMMAND ----------
+
 # DBTITLE 1,OBT SELECT
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE TABLE airline_operations.gold.obt_flights AS

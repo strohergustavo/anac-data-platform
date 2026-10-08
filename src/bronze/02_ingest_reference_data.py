@@ -9,6 +9,11 @@
 
 # DBTITLE 1,Config
 from pyspark.sql import functions as F
+import logging, time
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s", datefmt="%H:%M:%S")
+logger = logging.getLogger("anac.bronze.reference")
+_start = time.time()
 
 REFERENCE_DATA_PATH = "/Volumes/airline_operations/bronze/data/references"
 no_quotes = chr(0)

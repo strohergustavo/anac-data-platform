@@ -7,6 +7,11 @@
 
 # COMMAND ----------
 
+import logging, time
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s — %(message)s", datefmt="%H:%M:%S")
+logger = logging.getLogger("anac.gold.governance")
+_start = time.time()
+
 display(spark.sql("""
     SELECT
       COUNT(*)                                                      AS recovered_some_minutes,

@@ -73,6 +73,20 @@ A production-ready medallion lakehouse for Brazilian civil aviation data, built 
 
 ### Run the Pipeline
 
+**Option A — Databricks Asset Bundle (recommended):**
+
+```bash
+databricks bundle validate
+databricks bundle deploy -t dev
+databricks bundle run anac_pipeline -t dev
+```
+
+The job ships **paused** (ANAC publishes VRA monthly on the 5th). Every task is idempotent — re-running is safe.
+
+> If a data contract pipeline was created by hand before, delete it once so the bundle can take ownership of `silver.vra_quarentena`.
+
+**Option B — Run the notebooks manually:**
+
 Execute the notebooks in order:
 
 | Step | Notebook | Action |
@@ -688,9 +702,9 @@ The star schema (`fact_flights` + `dim_airport`) supports traditional BI tools. 
 
 ## ⚠️ Known Limitations
 
-1. **No incremental loading:** Full refresh reprocesses all 1M rows on every run. Acceptable at current scale; needs Auto Loader + `MERGE INTO` at >10M rows.
+1. **No incremental loading:** Full refresh reprocesses all 1M rows on every run. `mergeSchema` is enabled on bronze writes so new ANAC columns are absorbed automatically. Acceptable at current scale; needs Auto Loader + `MERGE INTO` at >10M rows.
 
-2. **No automated alerting:** The governance notebook provides validation queries but does not send alerts. Databricks SQL alerts or job failure notifications are planned.
+2. **Alerting is email-only:** The job sends an email notification on failure (`email_notifications.on_failure`). Databricks SQL alerts for specific DQ threshold breaches (e.g. quarantine rate > 25%) are planned.
 
 3. **No partitioning or clustering:** Full scans are optimal at <1M rows. At scale, partition pruning or liquid clustering will be needed.
 
@@ -698,9 +712,11 @@ The star schema (`fact_flights` + `dim_airport`) supports traditional BI tools. 
 
 5. **No automated deploy pipeline:** The repo ships a Databricks Asset Bundle (`databricks.yml`) with `deploy` and `run` commands, but deploys are manual. CI runs tests on push/PR but does not auto-deploy.
 
-6. **Genie Agent quality is unmeasured:** The OBT schema is designed for LLM consumption, but Genie Agent query accuracy has not been systematically evaluated. An evaluation harness is planned.
+6. **Structured logging without dashboards:** Each notebook emits structured `logging` output with row counts and timing. The logs are visible in the job run output but are not yet sent to a metrics dashboard or observability platform.
 
 7. **No data freshness SLA:** The pipeline depends on ANAC publishing monthly CSVs. There is no automated check for when new data arrives.
+
+8. **Genie Agent quality is unmeasured:** The OBT schema is designed for LLM consumption, but Genie Agent query accuracy has not been systematically evaluated. An evaluation harness is planned.
 
 ---
 

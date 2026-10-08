@@ -17,6 +17,9 @@ resources:
     anac_pipeline:
       name: anac-flight-analytics
       max_concurrent_runs: 1
+      email_notifications:
+        on_failure:
+          - strohergustavo@gmail.com
       schedule:
         # ANAC publishes VRA monthly; refresh on the 5th of each month.
         quartz_cron_expression: "0 0 6 5 * ?"
