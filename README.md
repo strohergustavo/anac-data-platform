@@ -57,7 +57,6 @@ A production-ready medallion lakehouse for Brazilian civil aviation data, built 
 - [Lessons Learned](#-lessons-learned)
 - [Known Limitations](#-known-limitations)
 - [Data Sources](#-data-sources)
-- [References](#-references)
 
 </details>
 
@@ -722,21 +721,6 @@ All data is public and sourced from **ANAC** (Agência Nacional de Aviação Civ
 | Operation Codes | Flight type code reference | (seed table, not from ANAC) | N/A |
 
 Available at: [dados.gov.br](https://dados.gov.br).
-
----
-
-<p align="right"><a href="#top">⬆ Back to top</a></p>
-
----
-
-## 📚 References
-
-- Kimball, R. & Ross, M. *The Data Warehouse Toolkit*, 3rd ed. Wiley, 2013.
-- Databricks. "Medallion Architecture." [Databricks Documentation](https://docs.databricks.com/lakehouse/medallion.html).
-- Databricks. "Unity Catalog." [Databricks Documentation](https://docs.databricks.com/data-governance/unity-catalog.html).
-- Databricks. "Delta Lake." [delta.io](https://delta.io/).
-- Databricks. "Genie." [Databricks Documentation](https://docs.databricks.com/genie/).
-- ANAC. "Dados Abertos." [dados.gov.br](https://dados.gov.br).
 
 ---
 
