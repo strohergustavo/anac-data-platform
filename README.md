@@ -796,7 +796,7 @@ RESTORE TABLE airline_operations.gold.obt_flights TO VERSION AS OF N;
 
 ## Known Limitations
 
-1. **No incremental loading:** Full refresh reprocesses all 1M rows on every run. `mergeSchema` is enabled on bronze writes so new ANAC columns are absorbed automatically. Acceptable at current scale; needs Auto Loader + `MERGE INTO` at >10M rows.
+1. **No incremental loading:** Full refresh reprocesses all 1M rows on every run. Bronze writes use `overwriteSchema`, so a new ANAC column is absorbed on the next full refresh. Acceptable at current scale; needs Auto Loader + `MERGE INTO` at >10M rows.
 
 2. **Alerting is email-only:** The job sends an email notification on failure (`email_notifications.on_failure`). Databricks SQL alerts for specific DQ threshold breaches (for example quarantine rate above 25%) are planned.
 
