@@ -15,12 +15,6 @@ _start = time.time()
 
 # COMMAND ----------
 
-# DBTITLE 1,Log result
-_rows = spark.table("airline_operations.gold.fact_flights").count()
-logger.info("gold.fact_flights: %s rows in %.1fs", f"{_rows:,}", time.time() - _start)
-
-# COMMAND ----------
-
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE TABLE airline_operations.gold.fact_flights AS
 # MAGIC WITH vra_deduplicated AS (
@@ -119,3 +113,9 @@ logger.info("gold.fact_flights: %s rows in %.1fs", f"{_rows:,}", time.time() - _
 # MAGIC LEFT JOIN airline    e ON b.icao_airline    = e.icao
 # MAGIC LEFT JOIN di         d ON b.di_code         = d.code
 # MAGIC LEFT JOIN line_type  t ON b.line_type_code  = t.code
+
+# COMMAND ----------
+
+# DBTITLE 1,Log result
+_rows = spark.table("airline_operations.gold.fact_flights").count()
+logger.info("gold.fact_flights: %s rows in %.1fs", f"{_rows:,}", time.time() - _start)

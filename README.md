@@ -527,7 +527,6 @@ Current version counts: `bronze.vra` (16), `silver.vra` (28), `gold.obt_flights`
 | Tag coverage | 100% | Governance notebook validation query |
 | Genie query latency P50 | < 2 s | Serverless compute metrics |
 
-*Note: The job emails the owner on failure, and the post load quality gate fails the run when an invariant breaks.*
 
 #### Access Control
 
@@ -577,7 +576,7 @@ Current version counts: `bronze.vra` (16), `silver.vra` (28), `gold.obt_flights`
 | Tag coverage | 100% | Governance notebook validation query |
 | Genie query latency P50 | < 2 s | Serverless compute metrics |
 
-*Note: The post-load quality gate fails the job when an invariant breaks. Notifications on that failure (email or Slack) are on the [Roadmap](#roadmap).*
+*Note: The job emails the owner when any task fails, and the post load quality gate fails the run when an invariant breaks. Slack notifications and SQL threshold alerts are on the [Roadmap](#roadmap).*
 
 </details>
 

@@ -32,9 +32,7 @@ raw_df = (
     .load(VRA_CSV_PATH)
 )
 
-print("columns read from file:")
-for c in raw_df.columns:
-    print(f"  {c!r}")
+logger.info("columns read from file: %s", raw_df.columns)
 
 # COMMAND ----------
 
@@ -58,7 +56,7 @@ bronze_df = raw_df.withColumn(
     .saveAsTable(BRONZE_VRA_TABLE)
 )
 
-print(f"{BRONZE_VRA_TABLE}: {spark.table(BRONZE_VRA_TABLE).count():,} linhas")
+logger.info(f"{BRONZE_VRA_TABLE}: {spark.table(BRONZE_VRA_TABLE).count():,} linhas")
 
 
 # COMMAND ----------
@@ -75,12 +73,12 @@ spark.sql(f"""
 
 # DBTITLE 1,Tags + column comments for bronze.vra
 # --- Tags ---
-spark.sql("""
-    ALTER TABLE airline_operations.bronze.vra SET TAGS (
+spark.sql(f"""
+    ALTER TABLE {BRONZE_VRA_TABLE} SET TAGS (
         'layer' = 'bronze', 'domain' = 'aviation', 'source' = 'ANAC-VRA', 'grain' = 'flight_step'
     )
 """)
-print("Tags applied to bronze.vra")
+logger.info("Tags applied to bronze.vra")
 
 # --- Column comments (Portuguese for Genie Agent compatibility) ---
 VRA_COLUMNS = {
@@ -101,8 +99,8 @@ VRA_COLUMNS = {
 }
 
 for col, comment in VRA_COLUMNS.items():
-    spark.sql(f"ALTER TABLE airline_operations.bronze.vra ALTER COLUMN `{col}` COMMENT '{comment}'")
-print(f"{len(VRA_COLUMNS)} column comments applied to bronze.vra")
+    spark.sql(f"ALTER TABLE {BRONZE_VRA_TABLE} ALTER COLUMN `{col}` COMMENT '{comment}'")
+logger.info(f"{len(VRA_COLUMNS)} column comments applied to bronze.vra")
 
 # COMMAND ----------
 
@@ -115,3 +113,8 @@ display(
         ORDER BY _arquivo_origem
     """)
 )
+
+# COMMAND ----------
+
+# DBTITLE 1,Log result
+logger.info("bronze.vra completed in %.1fs", time.time() - _start)

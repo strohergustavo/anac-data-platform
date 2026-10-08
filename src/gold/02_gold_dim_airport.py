@@ -19,12 +19,6 @@ _start = time.time()
 
 # COMMAND ----------
 
-# DBTITLE 1,Log result
-_rows = spark.table("airline_operations.gold.dim_airport").count()
-logger.info("gold.dim_airport: %s rows in %.1fs", f"{_rows:,}", time.time() - _start)
-
-# COMMAND ----------
-
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE TABLE airline_operations.gold.dim_airport AS
 # MAGIC WITH fact_airports AS (
@@ -55,3 +49,9 @@ logger.info("gold.dim_airport: %s rows in %.1fs", f"{_rows:,}", time.time() - _s
 # MAGIC   current_timestamp()                                                 AS _processed_at
 # MAGIC FROM fact_airports a
 # MAGIC LEFT JOIN registry c ON a.icao = c.icao
+
+# COMMAND ----------
+
+# DBTITLE 1,Log result
+_rows = spark.table("airline_operations.gold.dim_airport").count()
+logger.info("gold.dim_airport: %s rows in %.1fs", f"{_rows:,}", time.time() - _start)

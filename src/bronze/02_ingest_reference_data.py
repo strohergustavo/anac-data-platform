@@ -49,7 +49,7 @@ aerodromes.write.format("delta").mode("overwrite").option(
     "overwriteSchema", "true"
 ).saveAsTable("airline_operations.bronze.aerodromos")
 
-print(f"bronze.aerodromos: {spark.table('airline_operations.bronze.aerodromos').count():,} rows")
+logger.info(f"bronze.aerodromos: {spark.table('airline_operations.bronze.aerodromos').count():,} rows")
 display(spark.sql("SELECT icao, name, municipality, state FROM airline_operations.bronze.aerodromos WHERE icao IN ('SBRB','SBGR','SBSP','SBFZ')"))
 
 
@@ -87,7 +87,7 @@ for file, table in [
     read_companies(file).write.format("delta").mode("overwrite").option(
         "overwriteSchema", "true"
     ).saveAsTable(table)
-    print(f"{table}: {spark.table(table).count():,} rows")
+    logger.info(f"{table}: {spark.table(table).count():,} rows")
 
 # COMMAND ----------
 
@@ -142,7 +142,7 @@ codes.write.format("delta").mode("overwrite").option(
     "overwriteSchema", "true"
 ).saveAsTable("airline_operations.bronze.operation_codes")
 
-print(f"bronze.operation_codes: {spark.table('airline_operations.bronze.operation_codes').count()} rows")
+logger.info(f"bronze.operation_codes: {spark.table('airline_operations.bronze.operation_codes').count()} rows")
 display(spark.table("airline_operations.bronze.operation_codes"))
 
 
@@ -201,7 +201,7 @@ for table, comment in [
 ]:
     spark.sql(f"COMMENT ON TABLE {table} IS '{comment}'")
 
-print("comments applied")
+logger.info("comments applied")
 
 # COMMAND ----------
 
@@ -215,7 +215,7 @@ BRONZE_TAGS = {
 for table, tags in BRONZE_TAGS.items():
     pairs = ", ".join(f"'{k}' = '{v}'" for k, v in tags.items())
     spark.sql(f"ALTER TABLE {table} SET TAGS ({pairs})")
-    print(f"Tags applied to {table}")
+    logger.info(f"Tags applied to {table}")
 
 # --- Column comments (Portuguese for Genie Agent compatibility) ---
 COMMENTS = {
@@ -265,4 +265,9 @@ COMMENTS = {
 for table, col_map in COMMENTS.items():
     for col, comment in col_map.items():
         spark.sql(f"ALTER TABLE {table} ALTER COLUMN {col} COMMENT '{comment}'")
-    print(f"{len(col_map)} column comments applied to {table}")
+    logger.info(f"{len(col_map)} column comments applied to {table}")
+
+# COMMAND ----------
+
+# DBTITLE 1,Log result
+logger.info("bronze reference tables completed in %.1fs", time.time() - _start)

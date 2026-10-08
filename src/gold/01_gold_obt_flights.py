@@ -15,12 +15,6 @@ _start = time.time()
 
 # COMMAND ----------
 
-# DBTITLE 1,Log result
-_rows = spark.table("airline_operations.gold.obt_flights").count()
-logger.info("gold.obt_flights: %s rows in %.1fs", f"{_rows:,}", time.time() - _start)
-
-# COMMAND ----------
-
 # DBTITLE 1,OBT SELECT
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE TABLE airline_operations.gold.obt_flights AS
@@ -77,3 +71,9 @@ logger.info("gold.obt_flights: %s rows in %.1fs", f"{_rows:,}", time.time() - _s
 # MAGIC FROM airline_operations.gold.fact_flights f
 # MAGIC LEFT JOIN airline_operations.gold.dim_airport o ON f.icao_origin      = o.icao_airport
 # MAGIC LEFT JOIN airline_operations.gold.dim_airport d ON f.icao_destination = d.icao_airport
+
+# COMMAND ----------
+
+# DBTITLE 1,Log result
+_rows = spark.table("airline_operations.gold.obt_flights").count()
+logger.info("gold.obt_flights: %s rows in %.1fs", f"{_rows:,}", time.time() - _start)

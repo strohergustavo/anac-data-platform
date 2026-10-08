@@ -2,7 +2,7 @@
 
 # 🥇 Gold Layer
 
-### Consumption-ready — star schema + OBT for AI & BI
+### Consumption-ready — dimensional model + OBT for AI & BI
 
 </div>
 

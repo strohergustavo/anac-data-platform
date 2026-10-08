@@ -94,7 +94,7 @@ COMMENTS_OBT = {
 for column, comment in COMMENTS_OBT.items():
     spark.sql(f"ALTER TABLE airline_operations.gold.obt_flights ALTER COLUMN {column} COMMENT '{comment}'")
 
-print(f"{len(COMMENTS_OBT)} columns commented in gold.obt_flights")
+logger.info(f"{len(COMMENTS_OBT)} columns commented in gold.obt_flights")
 
 
 # COMMAND ----------
@@ -121,11 +121,11 @@ FACT_COLUMNS = [c for c in COMMENTS_FACT if c not in (
 
 for column in FACT_COLUMNS:
     spark.sql(f"ALTER TABLE airline_operations.gold.fact_flights ALTER COLUMN {column} COMMENT '{COMMENTS_FACT[column]}'")
-print(f"{len(FACT_COLUMNS)} columns commented in gold.fact_flights")
+logger.info(f"{len(FACT_COLUMNS)} columns commented in gold.fact_flights")
 
 for column, comment in COMMENTS_DIM.items():
     spark.sql(f"ALTER TABLE airline_operations.gold.dim_airport ALTER COLUMN {column} COMMENT '{comment}'")
-print(f"{len(COMMENTS_DIM)} columns commented in gold.dim_airport")
+logger.info(f"{len(COMMENTS_DIM)} columns commented in gold.dim_airport")
 
 
 # COMMAND ----------
@@ -157,7 +157,7 @@ for table, (comment, tags) in GOLD_TABLES.items():
     spark.sql(f"COMMENT ON TABLE {table} IS '{comment}'")
     pairs = ", ".join(f"'{k}' = '{v}'" for k, v in tags.items())
     spark.sql(f"ALTER TABLE {table} SET TAGS ({pairs})")
-    print(f"{table}: comment + {len(tags)} tags")
+    logger.info(f"{table}: comment + {len(tags)} tags")
 
 # COMMAND ----------
 
@@ -192,3 +192,8 @@ display(spark.sql("""
     GROUP BY 1, 2
     ORDER BY target, source
 """))
+
+# COMMAND ----------
+
+# DBTITLE 1,Log result
+logger.info("gold governance completed in %.1fs", time.time() - _start)

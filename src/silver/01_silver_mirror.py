@@ -87,7 +87,7 @@ SELECT
 FROM typed
 """)
 
-print("silver.vra created")
+logger.info("silver.vra created")
 
 
 # COMMAND ----------
@@ -253,7 +253,7 @@ COMMENTS_VRA = {
 for column, comment in COMMENTS_VRA.items():
     spark.sql(f"ALTER TABLE airline_operations.silver.vra ALTER COLUMN {column} COMMENT '{comment}'")
 
-print(f"{len(COMMENTS_VRA)} columns commented in silver.vra")
+logger.info(f"{len(COMMENTS_VRA)} columns commented in silver.vra")
 
 # COMMAND ----------
 
@@ -301,7 +301,7 @@ for table, mapping in [
 ]:
     for column, comment in mapping.items():
         spark.sql(f"ALTER TABLE {table} ALTER COLUMN {column} COMMENT '{comment}'")
-    print(f"{len(mapping)} columns commented in {table}")
+    logger.info(f"{len(mapping)} columns commented in {table}")
 
 # COMMAND ----------
 
@@ -336,7 +336,7 @@ for table, (comment, tags) in TABLES.items():
     spark.sql(f"COMMENT ON TABLE {table} IS '{comment}'")
     pairs = ", ".join(f"'{k}' = '{v}'" for k, v in tags.items())
     spark.sql(f"ALTER TABLE {table} SET TAGS ({pairs})")
-    print(f"{table}: comment + {len(tags)} tags")
+    logger.info(f"{table}: comment + {len(tags)} tags")
 
 
 # COMMAND ----------
@@ -361,3 +361,8 @@ display(spark.sql("""
     WHERE schema_name = 'silver'
     ORDER BY table_name, tag_name
 """))
+
+# COMMAND ----------
+
+# DBTITLE 1,Log result
+logger.info("silver mirror completed in %.1fs", time.time() - _start)
