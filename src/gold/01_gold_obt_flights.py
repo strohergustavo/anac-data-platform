@@ -54,7 +54,7 @@
 # MAGIC   f.departure_punctual,
 # MAGIC   f.arrival_punctual,
 # MAGIC
-# MAGIC     f.flight_status,
+# MAGIC   f.flight_status,
 # MAGIC   f.flight_completed,
 # MAGIC   f.flight_cancelled,
 # MAGIC

@@ -1,4 +1,4 @@
-CREATE TEMPORARY VIEW vra_marcado AS
+CREATE LIVE VIEW vra_marcado AS
 WITH aerodromo AS (
   SELECT DISTINCT icao FROM airline_operations.silver.aerodromes
   WHERE icao IS NOT NULL AND icao <> ''

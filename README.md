@@ -194,19 +194,33 @@ anac-data-platform/
 │   │       ├── 01_vra_marked.sql          # Enrichment flags (ANAC registry joins)
 │   │       ├── 02_vra_audited.sql         # Data contract: 9 expectations (warn mode)
 │   │       └── 03_vra_quarantine.sql       # Diagnostic quarantine materialized view
-│   └── gold/
-│       ├── README.md
-│       ├── 01_gold_obt_flights.py         # One Big Table (denormalized, 39 cols)
-│       ├── 02_gold_dim_airport.py         # Dimension: airports (unified origin/dest)
-│       ├── 03_gold_fact_flights.py        # Fact: flight steps with resolved FKs
-│       └── 04_gold_governance.py          # Column comments, UC tags, validation
+│   ├── gold/
+│   │   ├── README.md
+│   │   ├── 01_gold_obt_flights.py         # One Big Table (denormalized, 39 cols)
+│   │   ├── 02_gold_dim_airport.py         # Dimension: airports (unified origin/dest)
+│   │   ├── 03_gold_fact_flights.py        # Fact: flight steps with resolved FKs
+│   │   └── 04_gold_governance.py          # Column comments, UC tags, validation
+│   └── checks/
+│       └── data_quality_checks.py        # Post-load DQ gate (fails job on broken invariants)
+├── resources/
+│   └── anac_pipeline.yml                 # DAB: job + SDP pipeline definitions
+├── tests/
+│   ├── conftest.py                        # PySpark session fixture
+│   ├── fixtures.py                        # Hand-built test inputs
+│   ├── notebook_sql.py                    # Extracts SQL from notebooks for testing
+│   ├── test_silver_mirror.py             # Silver mirror invariants
+│   ├── test_silver_quarantine.py          # Quarantine logic
+│   └── test_gold_fact_flights.py          # Fact table business rules
 ├── docs/
-│   ├── data_catalog.py                    # Notebook-format data dictionary
-│   ├── RUNBOOK.md                         # Troubleshooting guide
-│   └── GOVERNANCE.md                      # Retention, SLA, audit policy
+│   └── data_catalog.py                    # Notebook-format data dictionary
+├── assets/
+│   └── header.svg                         # README banner
+├── .github/workflows/
+│   └── ci.yml                             # GitHub Actions: pytest on push/PR
 ├── .gitignore
-├── CONTRIBUTING.md
-├── ROADMAP.md
+├── databricks.yml                         # DAB root config (dev + prod targets)
+├── requirements-dev.txt                  # pyspark + pytest for local CI
+├── pytest.ini                             # pytest config
 └── README.md
 ```
 
@@ -252,7 +266,7 @@ This dual-model approach costs ~15 MB of additional storage (the OBT duplicates 
 
 **Rationale:** The dataset is ~1M rows and ~11–20 MB per layer. At this scale, full refresh completes in under 2 minutes and eliminates the complexity of change detection, deduplication, and merge conflicts.
 
-**Impact:** Idempotent and simple — no merge-conflict risk. When the dataset grows beyond ~10M rows, the bronze layer can adopt Auto Loader with incremental merge; silver and gold can switch to `MERGE INTO` with minimal code changes. See [ROADMAP.md](ROADMAP.md) for the planned evolution.
+**Impact:** Idempotent and simple — no merge-conflict risk. When the dataset grows beyond ~10M rows, the bronze layer can adopt Auto Loader with incremental merge; silver and gold can switch to `MERGE INTO` with minimal code changes. See [Known Limitations](#-known-limitations) for the planned evolution.
 
 ### 5. Databricks over Snowflake / BigQuery
 
@@ -392,7 +406,7 @@ The top 3 airlines account for 83.3% of all flight records:
 | GLO | 259,304 | 25.5% | |
 | Others (44 carriers) | 169,178 | 16.7% | Long tail of foreign airlines |
 
-**Implication:** At the current scale, skew is irrelevant — single-file scans complete in <1s. At >10M rows, partitioning by `icao_airline` would create hot partitions for TAM/AZU/GLO. Liquid clustering on `icao_airline` + `scheduled_departure_date` is the planned mitigation (see [ROADMAP.md](ROADMAP.md)).
+**Implication:** At the current scale, skew is irrelevant — single-file scans complete in <1s. At >10M rows, partitioning by `icao_airline` would create hot partitions for TAM/AZU/GLO. Liquid clustering on `icao_airline` + `scheduled_departure_date` is the planned mitigation (see [Known Limitations](#-known-limitations)).
 
 ### Monthly Distribution
 
@@ -471,7 +485,7 @@ Current version counts: `bronze.vra` (16), `silver.vra` (28), `gold.obt_flights`
 | Gold data | Indefinite | Rebuilt from silver on each refresh |
 | Volume CSVs | Indefinite | ANAC public data — no expiry needed |
 
-See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) for the full governance policy.
+
 
 ### Column Documentation
 
@@ -495,7 +509,7 @@ See [docs/GOVERNANCE.md](docs/GOVERNANCE.md) for the full governance policy.
 | Tag coverage | 100% | Governance notebook validation query |
 | Genie query latency P50 | < 2 s | Serverless compute metrics |
 
-*Note: Automated alerts are a planned enhancement — see [ROADMAP.md](ROADMAP.md). Currently, the governance notebook provides manual validation.*
+*Note: Automated alerts are a planned enhancement — see [Known Limitations](#-known-limitations). Currently, the governance notebook provides manual validation.*
 
 ---
 
@@ -683,7 +697,7 @@ The star schema (`fact_flights` + `dim_airport`) supports traditional BI tools. 
 
 4. **Single catalog, single workspace:** The pipeline assumes `airline_operations` catalog exists with `bronze`, `silver`, `gold` schemas. No multi-environment (dev/staging/prod) setup is documented.
 
-5. **No CI/CD:** Notebooks are version-controlled via Git but not deployed through a pipeline. Databricks Asset Bundles are the planned approach.
+5. **No automated deploy pipeline:** The repo ships a Databricks Asset Bundle (`databricks.yml`) with `deploy` and `run` commands, but deploys are manual. CI runs tests on push/PR but does not auto-deploy.
 
 6. **Genie Agent quality is unmeasured:** The OBT schema is designed for LLM consumption, but Genie Agent query accuracy has not been systematically evaluated. An evaluation harness is planned.
 
