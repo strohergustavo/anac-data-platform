@@ -16,9 +16,12 @@ logger = get_logger("gold.obt_flights")
 _start = time.time()
 
 # COMMAND ----------
+
 # DBTITLE 1,OBT SELECT
 spark.sql(f"""
-CREATE OR REPLACE TABLE {CATALOG}.gold.obt_flights AS
+CREATE OR REPLACE TABLE {CATALOG}.gold.obt_flights
+CLUSTER BY (scheduled_departure_date, airline_name, flight_scope)
+AS
 SELECT
   f.icao_airline,
   f.airline_name,

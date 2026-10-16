@@ -18,7 +18,9 @@ _start = time.time()
 # COMMAND ----------
 
 spark.sql(f"""
-CREATE OR REPLACE TABLE {CATALOG}.gold.fact_flights AS
+CREATE OR REPLACE TABLE {CATALOG}.gold.fact_flights
+CLUSTER BY (scheduled_departure_date, airline_name)
+AS
 WITH vra_deduplicated AS (
   SELECT * FROM (
     SELECT *,

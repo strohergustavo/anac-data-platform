@@ -2,7 +2,7 @@
 
 An end to end aviation **data Lakehouse on Databricks** that turns ANAC's public flight records into decision ready analytics. Over **1 million flights** move through an idempotent **medallion architecture** (bronze → silver → gold), where a declarative data quality framework of **9 expectations** isolates **21% of anomalous records** into a diagnostic quarantine without losing a single row.
 
-The gold layer follows a **dual model design**, combining a Kimball dimensional model for BI workloads with a **39 column One Big Table** engineered for natural language to SQL agents (Databricks Genie). Everything is governed by **Unity Catalog**, with end to end lineage, tags and complete column documentation that grounds the AI semantically, and the full pipeline refreshes in **under two minutes** on serverless compute.
+The gold layer follows a **dual model design**, combining a Kimball dimensional model for BI workloads with a **39 column One Big Table** engineered for natural language to SQL agents (Databricks Genie). Everything is governed by **Unity Catalog**, with end to end lineage, tags and complete column documentation that grounds the AI semantically, and the full pipeline refreshes in **under ten minutes** on serverless compute, with liquid clustering on the gold tables for sub-second Genie query response.
 
 | Metric | Value | Notes |
 |:--|:--|:--|
@@ -11,13 +11,13 @@ The gold layer follows a **dual model design**, combining a Kimball dimensional 
 | **Airports covered** | **396** | 296 Brazilian + 100 foreign |
 | **Delta tables** | **8** | 3 bronze · 5 silver · 3 gold |
 | **Total storage** | **~62 MB** | Across all layers |
-| **Pipeline runtime** | **< 2 min** | End-to-end on serverless compute |
+| **Pipeline runtime** | **< 10 min** | End-to-end on serverless compute (excl. queue) |
 | **Punctuality threshold** | **15 min** | Aligned with ANAC reporting standard |
 | **Quarantine rate** | **21.05%** | 213,545 rows fail ≥1 DQ expectation |
 | **DQ expectations** | **9 rules** | All in WARN mode — zero rows dropped |
 | **Column documentation** | **178 columns** | 100% of silver/gold columns commented in PT-BR |
 | **UC tags** | **51 tags** | Across 12 tables (layer, domain, grain, source) |
-| **Genie-optimized** | **OBT** | 39-column single-table for NL2SQL |
+| **Genie-optimized** | **OBT** | 39-column single-table for NL2SQL, liquid-clustered |
 
 **Contents** &nbsp; [Architecture](#architecture) · [Key Findings](#key-findings) · [Quick Start](#quick-start) · [Testing](#testing) · [Practices](#engineering-practices) · [Repository](#repository-structure) · [Decisions](#architectural-decisions) · [Data Quality](#data-quality) · [Deep Dives](#deep-dives) · [Lessons](#lessons-learned) · [Limitations](#known-limitations) · [Roadmap](#roadmap) · [Data Sources](#data-sources)
 
@@ -193,6 +193,7 @@ pytest
 | **Tested business rules** | 18 tests run the notebooks' own SQL in CI, and a quality gate checks the real data after every load. |
 | **Infrastructure as code** | The job, its dependency graph, schedule, alerts and the data contract pipeline live in the Asset Bundle. |
 | **Observability** | Structured logs with row counts and timings in every task, plus an email when the job fails. |
+| **Liquid clustering** | `CLUSTER BY` on `silver.vra` (scheduled_departure), `gold.fact_flights` (date + airline), `gold.obt_flights` (date + airline + scope) for fast Genie and BI filtering. |
 
 ---
 
@@ -796,7 +797,7 @@ RESTORE TABLE airline_operations.gold.obt_flights TO VERSION AS OF N;
 
 **When volume grows past ~5M rows**
 - **Incremental loads.** Auto Loader in bronze and `MERGE INTO` in silver and gold.
-- **Liquid clustering** on `icao_airline` + `scheduled_departure_date`.
+- **Additional clustering columns** on `icao_origin` and `icao_destination` as route-level queries become dominant.
 
 **Later**
 - **Historical backfill** beyond the current 12 month window.

@@ -20,7 +20,9 @@ _start = time.time()
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.silver")
 
 spark.sql(f"""
-CREATE OR REPLACE TABLE {CATALOG}.silver.vra AS
+CREATE OR REPLACE TABLE {CATALOG}.silver.vra
+CLUSTER BY (scheduled_departure)
+AS
 WITH typed AS (
   SELECT
     `ICAO Empresa Aérea`        AS icao_airline,
